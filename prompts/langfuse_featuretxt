@@ -1,0 +1,171 @@
+## Feature: LangFuse Enhanced Management Dashboard + GitLab-Triggered Prompt Merging
+
+You are implementing the first major feature module of the internal AI Platform 
+Management application. This module wraps and extends LangFuse to provide:
+
+1. A richer visualization layer over LangFuse's native UI
+2. An automated prompt merge system triggered by GitLab Merge Requests
+
+---
+
+### CONTEXT
+
+The team uses LangFuse for tracing, observability, and prompt management.
+Developers work on personal/feature-branch LangFuse prompts (named by convention, 
+e.g., `feat/my-feature--prompt-name`). When a GitLab MR is merged, the corresponding 
+LangFuse prompts must be automatically promoted/merged into the production prompt 
+(e.g., `prompt-name` in the `production` label).
+
+---
+
+### PART 1 — Enhanced LangFuse Visualization Dashboard
+
+#### Page: `/platform/observability`
+
+Build a dashboard that consumes LangFuse's API and renders the following:
+
+**Trace Explorer Panel**
+- Filterable, paginated table of traces (by date range, user, session, model, tags, 
+  status: success/error)
+- Expandable row → Trace Detail Drawer showing:
+  - Full span tree (parent/child hierarchy) rendered as a collapsible tree with 
+    duration bars (Gantt-style mini-chart using Recharts or a custom div-based renderer)
+  - Token usage breakdown per span (prompt tokens, completion tokens, cost estimate)
+  - Input/output display with syntax highlighting (use `shiki` or `highlight.js`)
+  - Metadata, tags, scores displayed as badges
+
+**Metrics Cards Row** (top of page)
+- Total traces (today / 7d / 30d toggle)
+- Average latency (P50, P95, P99)
+- Total token usage + estimated cost
+- Error rate %
+- All cards animate on load and support drill-down click
+
+**Latency & Usage Charts**
+- Line chart: Latency over time (P50/P95 overlay)
+- Bar chart: Token usage by model (grouped)
+- Area chart: Trace volume over time
+- All charts use Recharts, are responsive, and support tooltip with full data
+
+**Scores & Evaluation Panel**
+- Table of LangFuse scores (human feedback, LLM-as-judge results)
+- Score distribution histogram
+- Filter by trace, scorer, score name
+
+**Sessions View**
+- Group traces by session ID
+- Show session timeline, total cost, user journey reconstruction
+
+**Datasets & Experiments Panel**
+- List all LangFuse datasets with item counts and last-updated
+- Click into a dataset → view items, expected outputs, linked runs
+- Experiment comparison table: side-by-side runs with score comparisons, latency delta, 
+  cost delta — highlight winning run in green
+
+---
+
+### PART 2 — Prompt Management & GitLab MR Merge Trigger
+
+#### Page: `/platform/prompts`
+
+**Prompt Catalog View**
+- List all LangFuse prompts with: name, labels, active version, last updated, tags
+- Filter by label (production / staging / feature/*), search by name
+- Click → Prompt Detail page
+
+**Prompt Detail Page**
+- Version history timeline (vertical stepper component)
+- Side-by-side diff view between any two versions (use `diff` npm package + custom 
+  renderer with red/green line highlighting)
+- Prompt variables extracted and displayed as a schema table
+- "Promote to Production" manual button (role-gated — admin only)
+- Commit history panel (GitLab MR linked if metadata present)
+
+**Prompt Merge Engine (Core Feature)**
+
+Architecture:
+
+  [GitLab Webhook] 
+       ↓
+  POST /api/webhooks/gitlab
+       ↓
+  Validate X-Gitlab-Token secret
+       ↓
+  Filter: event = "merge_request", state = "merged", target_branch = "main"
+       ↓
+  Extract branch name → derive LangFuse prompt name via naming convention
+       ↓
+  Call LangFuse API: get latest version of feature prompt
+       ↓
+  Call LangFuse API: create new version of production prompt with feature content
+       ↓
+  Apply labels: remove "feature/*", add "production"
+       ↓
+  Log merge event to platform audit log
+       ↓
+  Post comment back to GitLab MR with merge result summary
+
+Implement:
+- `app/api/webhooks/gitlab/route.ts` — webhook receiver with HMAC signature validation
+- `lib/langfuse.ts` — typed LangFuse API client (wrapping `langfuse` SDK and raw API 
+  calls for prompt management)
+- `lib/gitlab.ts` — GitLab API client for posting MR comments
+- `lib/prompt-merge.ts` — core merge logic: convention parsing, conflict detection, 
+  merge execution, rollback on failure
+- Naming convention parser: `{prefix}/{branch-slug}--{prompt-name}` → extracts 
+  `prompt-name` as the production target
+- Conflict detection: if production prompt was updated after the feature branch prompt 
+  was created, flag a conflict and post a warning comment to the MR instead of 
+  auto-merging; create a conflict record in the platform DB for manual resolution
+
+**Merge History & Audit Log Panel** (on `/platform/prompts` page)
+- Table of all merge events: timestamp, MR link, branch, prompt affected, status 
+  (success / conflict / failed), triggered by
+- Click → Merge Detail Drawer showing full diff of what was merged, GitLab MR metadata, 
+  and rollback button (admin only)
+
+**Conflict Resolution UI**
+- List of unresolved prompt conflicts
+- Side-by-side editor (production version vs feature version) with merge controls:  
+  "Accept Feature", "Accept Production", "Merge Manually" (opens an editable textarea 
+  prepopulated with feature version)
+- On resolve → calls LangFuse API to create new production version + marks conflict 
+  resolved in audit log
+
+---
+
+### API RESPONSE ENVELOPE (all route handlers)
+```typescript
+type ApiResponse<T> = {
+  data: T | null
+  error: string | null
+  meta?: {
+    page?: number
+    total?: number
+    took_ms?: number
+  }
+}
+```
+
+### ENVIRONMENT VARIABLES REQUIRED
+LANGFUSE_PUBLIC_KEY=
+LANGFUSE_SECRET_KEY=
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+GITLAB_TOKEN=
+GITLAB_WEBHOOK_SECRET=
+GITLAB_BASE_URL=https://gitlab.com
+PLATFORM_ADMIN_ROLE=admin
+
+### IMPLEMENTATION ORDER
+
+1. `lib/env.ts` — typed env validation
+2. `lib/langfuse.ts` — LangFuse client singleton
+3. `lib/gitlab.ts` — GitLab client singleton  
+4. `app/api/webhooks/gitlab/route.ts` — webhook handler
+5. `lib/prompt-merge.ts` — merge engine
+6. `app/api/prompts/route.ts` + `app/api/traces/route.ts` — data routes
+7. React Query hooks: `useTraces`, `usePrompts`, `useMergeHistory`, `useMetrics`
+8. UI Components: MetricCards, TraceTable, TraceDrawer, GanttSpanTree, PromptDiff, 
+   MergeHistoryTable, ConflictResolutionPanel
+9. Pages: `/platform/observability`, `/platform/prompts`
+10. Webhook integration test + GitLab MR comment posting test

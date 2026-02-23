@@ -1,0 +1,33 @@
+stages:
+  - test
+
+test:unit:
+  stage: test
+  script:
+    - npm run test:unit -- --coverage --ci
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+test:integration:
+  stage: test
+  script:
+    - npm run test:integration -- --ci
+  services:
+    - name: postgres:15
+      alias: db
+
+test:e2e:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.44.0-jammy
+  script:
+    - npm run build
+    - npx playwright test --reporter=html
+  artifacts:
+    when: always
+    paths:
+      - playwright-report/
+    expire_in: 7 days
