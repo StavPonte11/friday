@@ -17,7 +17,7 @@ export const pmAnalyticsRouter = router({
             });
             if (!sprint || !sprint.startDate || !sprint.endDate) return [];
 
-            const totalPoints = sprint.issues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
+            const totalPoints = sprint.issues.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0);
             const startDate = new Date(sprint.startDate);
             const endDate = new Date(sprint.endDate);
             const days: { date: string; remaining: number; ideal: number }[] = [];
@@ -31,12 +31,12 @@ export const pmAnalyticsRouter = router({
                 const dateStr = date.toISOString().split("T")[0];
 
                 // Issues completed on this day
-                const completedToday = sprint.issues.filter((i) => {
+                const completedToday = sprint.issues.filter((i: any) => {
                     if (!i.updatedAt) return false;
                     const updated = new Date(i.updatedAt).toISOString().split("T")[0];
                     return updated === dateStr && i.status === "DONE";
                 });
-                remaining -= completedToday.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
+                remaining -= completedToday.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0);
 
                 days.push({
                     date: dateStr,
@@ -60,12 +60,12 @@ export const pmAnalyticsRouter = router({
                 orderBy: { startDate: "asc" },
             });
 
-            return sprints.map((s) => ({
+            return sprints.map((s: any) => ({
                 sprint: s.name,
                 completed: s.issues
-                    .filter((i) => i.status === "DONE")
-                    .reduce((sum, i) => sum + (i.storyPoints ?? 0), 0),
-                committed: s.issues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0),
+                    .filter((i: any) => i.status === "DONE")
+                    .reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0),
+                committed: s.issues.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0),
             }));
         }),
 
@@ -92,7 +92,7 @@ export const pmAnalyticsRouter = router({
                 const key = date.toISOString().split("T")[0];
                 result[key] = {};
                 for (const s of statuses) {
-                    result[key][s] = issues.filter((i) => {
+                    result[key][s] = issues.filter((i: any) => {
                         const created = new Date(i.createdAt) <= date;
                         return created && i.status === s;
                     }).length;
@@ -115,7 +115,7 @@ export const pmAnalyticsRouter = router({
                 take: 50,
             });
 
-            return issues.map((i) => ({
+            return issues.map((i: any) => ({
                 key: i.key,
                 title: i.title,
                 priority: i.priority,

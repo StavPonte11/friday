@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Relational Database
   postgres:
@@ -82,17 +80,17 @@ services:
       - minio_data:/data
 
   # LLM Runner
-  ollama:
-    image: ollama/ollama
-    restart: always
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
+  # ollama:
+  #   image: ollama/ollama
+  #   restart: always
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
 
   # Tracing
   langfuse-server:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:2
     depends_on:
       postgres:
         condition: service_healthy

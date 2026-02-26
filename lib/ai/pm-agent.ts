@@ -10,7 +10,7 @@
  */
 
 import { StateGraph, Annotation, END } from "@langchain/langgraph";
-import { ChatOllama } from "@langchain/ollama";
+import { ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { PrismaClient, PmIssueStatus, PmIssuePriority } from "@prisma/client";
@@ -20,9 +20,12 @@ const prisma = new PrismaClient();
 // ---------------------------------------------------------------------------
 // LLM — local Ollama instance (points to the docker-compose service)
 // ---------------------------------------------------------------------------
-const llm = new ChatOllama({
-    baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
-    model: process.env.OLLAMA_MODEL || "llama3",
+const llm = new ChatOpenAI({
+    configuration: {
+        baseURL: process.env.OPENAI_BASE_URL || "http://localhost:11434/v1",
+    },
+    model: process.env.OPENAI_MODEL_NAME || "llama3",
+    apiKey: process.env.OPENAI_API_KEY || "not-needed-for-local",
     temperature: 0.3,
 });
 
@@ -123,11 +126,11 @@ const analyzeSprintHealthTool = tool(
         if (!sprint) return `Sprint ${sprintId} not found`;
 
         const total = sprint.issues.length;
-        const done = sprint.issues.filter((i) => i.status === "DONE").length;
-        const inProgress = sprint.issues.filter((i) => i.status === "IN_PROGRESS").length;
-        const blocked = sprint.issues.filter((i) => i.status === "BACKLOG").length;
-        const points = sprint.issues.reduce((s, i) => s + (i.storyPoints ?? 0), 0);
-        const donePoints = sprint.issues.filter((i) => i.status === "DONE").reduce((s, i) => s + (i.storyPoints ?? 0), 0);
+        const done = sprint.issues.filter((i: any) => i.status === "DONE").length;
+        const inProgress = sprint.issues.filter((i: any) => i.status === "IN_PROGRESS").length;
+        const blocked = sprint.issues.filter((i: any) => i.status === "BACKLOG").length;
+        const points = sprint.issues.reduce((s: number, i: any) => s + (i.storyPoints ?? 0), 0);
+        const donePoints = sprint.issues.filter((i: any) => i.status === "DONE").reduce((s: number, i: any) => s + (i.storyPoints ?? 0), 0);
 
         const prompt = `Sprint health analysis:
 Sprint: ${sprint.name}
@@ -176,7 +179,7 @@ Return a prioritized list as: "1. FPM-X — reason\n2. FPM-Y — reason..."`;
     }
 );
 
-const tools = [generateIssueTool, detectDuplicatesTool, analyzeSprintHealthTool, autoPrioritizeBacklogTool];
+const tools = [generateIssueTool, detectDuplicatesTool, analyzeSprintHealthTool, autoPrioritizeBacklogTool] as any[];
 const llmWithTools = llm.bindTools(tools);
 
 // ---------------------------------------------------------------------------
