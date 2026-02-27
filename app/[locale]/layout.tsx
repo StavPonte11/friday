@@ -1,3 +1,4 @@
+import React from 'react';
 import '../globals.css';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -8,13 +9,13 @@ export const metadata = {
   description: 'Internal developer and product portal',
 };
 
-export default async function LocaleLayout({
-  children,
-  params: { locale }
-}: {
+export default async function LocaleLayout(props: {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }) {
+  const params = await props.params;
+  const { locale } = params;
+  const { children } = props;
   const messages = await getMessages();
   const dir = locale === 'he' ? 'rtl' : 'ltr';
 

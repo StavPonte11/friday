@@ -5,8 +5,10 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-    adapter: PrismaAdapter(prisma),
+import type { NextAuthOptions } from "next-auth";
+
+export const authOptions: NextAuthOptions = {
+    adapter: PrismaAdapter(prisma) as any,
     providers: [
         CredentialsProvider({
             name: "Credentials",
@@ -28,4 +30,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     pages: {
         signIn: "/auth/signin"
     }
-});
+};

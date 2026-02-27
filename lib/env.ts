@@ -3,11 +3,11 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
-    LANGFUSE_PUBLIC_KEY: z.string().min(1),
-    LANGFUSE_SECRET_KEY: z.string().min(1),
+    LANGFUSE_PUBLIC_KEY: z.string().optional(),
+    LANGFUSE_SECRET_KEY: z.string().optional(),
     LANGFUSE_BASE_URL: z.string().url().default("https://cloud.langfuse.com"),
-    GITLAB_TOKEN: z.string().min(1),
-    GITLAB_WEBHOOK_SECRET: z.string().min(1),
+    GITLAB_TOKEN: z.string().optional(),
+    GITLAB_WEBHOOK_SECRET: z.string().optional(),
     GITLAB_BASE_URL: z.string().url().default("https://gitlab.com"),
     PLATFORM_ADMIN_ROLE: z.string().default("admin"),
   },

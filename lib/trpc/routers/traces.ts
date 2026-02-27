@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../server";
+import { router, publicProcedure } from "../init";
 
 const lfHost = process.env.LANGFUSE_HOST || "http://localhost:3000";
 const lfPublic = process.env.LANGFUSE_PUBLIC_KEY || "";

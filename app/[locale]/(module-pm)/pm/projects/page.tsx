@@ -12,6 +12,7 @@ const MOCK_WORKSPACE_ID = "cm7k12abc0001xyz";
 export default function ProjectsPage() {
     const locale = useLocale();
     const [search, setSearch] = useState("");
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const { data: projects, isLoading } = trpc.pmProjects.list.useQuery({ workspaceId: MOCK_WORKSPACE_ID });
 
     const filtered = projects?.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.key.toLowerCase().includes(search.toLowerCase())) || [];
@@ -23,7 +24,7 @@ export default function ProjectsPage() {
                     <h2 className="text-2xl font-bold tracking-tight">Projects</h2>
                     <p className="text-muted-foreground">Manage your engineering projects, issues, and sprints.</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 shadow-sm">
+                <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 shadow-sm">
                     <Plus size={16} /> New Project
                 </button>
             </div>
@@ -91,6 +92,28 @@ export default function ProjectsPage() {
                             </div>
                         </Link>
                     ))}
+                </div>
+            )}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-card border border-border rounded-xl shadow-lg w-full max-w-md p-6">
+                        <h3 className="text-xl font-bold mb-2">Create New Project</h3>
+                        <p className="text-sm text-muted-foreground mb-6">Define your new project scope and key.</p>
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="text-sm font-medium mb-1 block">Project Name</label>
+                                <input type="text" className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50" placeholder="E.g. Engineering Platform" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium mb-1 block">Project Key</label>
+                                <input type="text" className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50" placeholder="E.g. ENG" />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 hover:bg-muted text-foreground rounded-md text-sm font-medium transition-colors">Cancel</button>
+                            <button onClick={() => { alert('Project creation coming soon!'); setIsModalOpen(false); }} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors shadow-sm">Create Project</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

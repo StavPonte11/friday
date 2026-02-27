@@ -6,7 +6,9 @@ import { ArrowLeft, Clock, Code, Database, Globe, Play, Server } from "lucide-re
 import Link from "next/link";
 import { useLocale } from "next-intl";
 
-export default function TraceDetailPage({ params }: { params: { id: string } }) {
+export default function TraceDetailPage(props: { params: Promise<{ id: string }> }) {
+    const params = React.use(props.params);
+    const { id } = params;
     const locale = useLocale();
     const { data, isLoading, error } = trpc.traces.getTraces.useQuery({ sessionId: params.id, limit: 100 });
     const [selectedSpan, setSelectedSpan] = useState<any>(null);

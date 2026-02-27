@@ -1,7 +1,9 @@
 import React from "react";
 import { getTranslations } from "next-intl/server";
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
+    const params = await props.params;
+    const { locale } = params;
     const t = await getTranslations({ locale, namespace: "Traces" });
     return {
         title: t("title") || "Friday Traces",

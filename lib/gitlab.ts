@@ -3,7 +3,7 @@ import { env } from "./env";
 export async function fetchGitLabAPI(endpoint: string, options?: RequestInit) {
     const url = `${env.GITLAB_BASE_URL}/api/v4${endpoint}`;
     const headers = new Headers(options?.headers);
-    headers.set("Private-Token", env.GITLAB_TOKEN);
+    headers.set("Private-Token", env.GITLAB_TOKEN || "");
 
     if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json");
