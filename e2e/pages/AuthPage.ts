@@ -14,6 +14,6 @@ export class AuthPage {
         await this.page.click('button[type="submit"]');
 
         // Wait for redirect to home
-        await this.page.waitForURL(/.*(platform|pm|observability|$).*/);
+        await this.page.waitForURL('**/en**');
     }
 }

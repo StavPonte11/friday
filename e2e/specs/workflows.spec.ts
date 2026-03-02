@@ -25,55 +25,18 @@ test.describe('Platform Workflows', () => {
         // So let's login
         await authPage.login();
         await page.goto('/en/pm/projects');
-        await expect(page.getByText('Projects')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible({ timeout: 15000 });
     });
 
     test('Database Registration: Creates a new Workspace / PM Project', async ({ page }) => {
         await authPage.login();
 
-        // Mock workspace network response so the UI allows project creation
-        await page.route('**/api/trpc/workspaces.list*', async route => {
-            const json = {
-                result: {
-                    data: {
-                        json: [
-                            {
-                                id: 'mock-ws-1',
-                                name: 'Mock Workspace',
-                                slug: 'mock'
-                            }
-                        ]
-                    }
-                }
-            };
-            await route.fulfill({ json });
-        });
-
-        // Mock pmProjects.create just in case it attempts to insert into DB
-        await page.route('**/api/trpc/pmProjects.create*', async route => {
-            const json = {
-                result: {
-                    data: {
-                        json: { id: 'proj-1', name: 'Test Project', key: 'TEST' }
-                    }
-                }
-            };
-            await route.fulfill({ json });
-        });
-
-        // Mock pmProjects.list so the new project shows up
-        let projectsHit = 0;
-        await page.route('**/api/trpc/pmProjects.list*', async route => {
-            const mockProjects = projectsHit > 0 ? [{ id: 'proj-1', name: 'Test Project', key: 'TEST', updatedAt: new Date().toISOString() }] : [];
-            projectsHit++;
-            const json = { result: { data: { json: mockProjects } } };
-            await route.fulfill({ json });
-        });
-
         await page.goto('/en/pm/projects');
         await expect(page.locator('body')).not.toBeEmpty();
 
-        const projectName = `Test Project`;
+        const randomStr = Math.random().toString(36).substring(2, 6);
+        const projectName = `Test Project ${randomStr}`;
+        const projectKey = `TP${randomStr.toUpperCase()}`;
 
         // Interact with the UI to create a project
         const createBtn = page.getByRole('button', { name: /create|new project/i });
@@ -85,7 +48,15 @@ test.describe('Platform Workflows', () => {
             await nameInput.waitFor({ state: 'visible' });
             await nameInput.fill(projectName);
             await page.keyboard.press('Tab');
+            await page.keyboard.press('Tab'); // Navigate away to let key auto-fill or enter manually
+
+            const keyInput = page.locator('input[placeholder="E.g. ENG"]');
+            await keyInput.fill(projectKey);
+
             await page.getByRole('button', { name: /create project/i }).click();
+
+            // Wait for modal to close (success)
+            await expect(page.getByRole('heading', { name: 'Create New Project' })).toBeHidden({ timeout: 15000 });
 
             // Verify project appears in the UI
             await workspacePage.verifyProjectExists(projectName);
