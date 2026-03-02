@@ -3,11 +3,13 @@ import { tracesRouter } from './routers/traces';
 import { pmProjectsRouter } from './routers/pm-projects';
 import { pmIssuesRouter } from './routers/pm-issues';
 import { pmAnalyticsRouter } from './routers/pm-analytics';
+import { workspacesRouter } from './routers/workspaces';
 
 // Base app router
 export const appRouter = router({
     healthcheck: publicProcedure.query(() => 'yay!'),
     traces: tracesRouter,
+    workspaces: workspacesRouter,
     pmProjects: pmProjectsRouter,
     pmIssues: pmIssuesRouter,
     pmAnalytics: pmAnalyticsRouter,

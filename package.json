@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "gen": "npx prisma generate --schema=packages/db/schema.prisma",
+    "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" packages/db/seed.ts",
     "test": "jest",
     "test:unit": "jest --project=unit:lib --project=unit:components",
     "test:integration": "jest --project=integration",

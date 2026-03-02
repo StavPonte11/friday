@@ -38,7 +38,7 @@ export const pmProjectsRouter = router({
             });
         }),
 
-    getById: publicProcedure
+    get: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ input }) => {
             return prisma.pmProject.findUnique({

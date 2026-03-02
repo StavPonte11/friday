@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { ArrowLeft, Clock, Code, Database, Globe, Play, Server } from "lucide-react";
+import { LoadingState } from "@/components/ui/loading-state";
 import Link from "next/link";
 import { useLocale } from "next-intl";
 
@@ -13,7 +14,7 @@ export default function TraceDetailPage(props: { params: Promise<{ id: string }>
     const { data, isLoading, error } = trpc.traces.getTraces.useQuery({ sessionId: params.id, limit: 100 });
     const [selectedSpan, setSelectedSpan] = useState<any>(null);
 
-    if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading trace execution...</div>;
+    if (isLoading) return <LoadingState title="Loading Trace Details..." description="Retrieving execution spans and generations" />;
     if (error) return <div className="p-8 text-center text-destructive">Error loading trace: {error.message}</div>;
 
     const traces = data?.data || [];

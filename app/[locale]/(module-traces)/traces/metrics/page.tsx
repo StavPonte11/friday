@@ -3,6 +3,7 @@
 import React from "react";
 import { trpc } from "@/lib/trpc/client";
 import { LineChart, BarChart, Activity } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 
 export default function MetricsPage() {
     const { data, isLoading } = trpc.traces.getMetrics.useQuery();
@@ -21,7 +22,7 @@ export default function MetricsPage() {
                         <span className="text-sm font-medium uppercase tracking-wider">Total Tokens (24h)</span>
                     </div>
                     <span className="text-3xl font-bold tabular-nums">
-                        {isLoading ? "..." : "1.24M"}
+                        {isLoading ? <LoadingSpinner className="p-0 max-w-min" /> : "1.24M"}
                     </span>
                     <span className="text-xs text-green-500">+12% from yesterday</span>
                 </div>
@@ -32,7 +33,7 @@ export default function MetricsPage() {
                         <span className="text-sm font-medium uppercase tracking-wider">Total Cost (24h)</span>
                     </div>
                     <span className="text-3xl font-bold tabular-nums">
-                        {isLoading ? "..." : "$14.20"}
+                        {isLoading ? <LoadingSpinner className="p-0 max-w-min" /> : "$14.20"}
                     </span>
                     <span className="text-xs text-green-500">+4% from yesterday</span>
                 </div>
@@ -43,7 +44,7 @@ export default function MetricsPage() {
                         <span className="text-sm font-medium uppercase tracking-wider">Average Latency</span>
                     </div>
                     <span className="text-3xl font-bold tabular-nums">
-                        {isLoading ? "..." : "845ms"}
+                        {isLoading ? <LoadingSpinner className="p-0 max-w-min" /> : "845ms"}
                     </span>
                     <span className="text-xs text-muted-foreground">p95: 1.2s</span>
                 </div>

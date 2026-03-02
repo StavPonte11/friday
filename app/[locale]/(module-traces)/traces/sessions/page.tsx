@@ -3,12 +3,13 @@
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Activity, Clock, Filter, Key, User } from "lucide-react";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export default function SessionsPage() {
     const [page, setPage] = useState(1);
     const { data, isLoading, error } = trpc.traces.getSessions.useQuery({ page, limit: 25 });
 
-    if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading sessions...</div>;
+    if (isLoading) return <LoadingState title="Loading Sessions..." description="Retrieving Langfuse traces" />;
     if (error) return <div className="p-8 text-center text-destructive">Error: {error.message}</div>;
 
     const sessions = data?.data || [];

@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { DndContext, DragOverlay, closestCorners, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove } from "@dnd-kit/sortable";
+import { DndContext, DragEndEvent, DragStartEvent, closestCorners } from "@dnd-kit/core";
+import { PmIssueStatus } from "@prisma/client";
 import { useLocale } from "next-intl";
-import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import { useEffect, useState } from "react";
 import io from "socket.io-client";
-import { CircleDashed, CheckCircle2, AlertCircle } from "lucide-react";
 
 const MOCK_PROJECT_ID = "cm7k12abc0001xyz";
 
