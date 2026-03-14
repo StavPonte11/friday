@@ -44,15 +44,12 @@ export default function ProjectsPage() {
     const utils = trpc.useUtils();
 
     const { data: projects, isLoading: projectsLoading } =
-        trpc.pmProjects.list.useQuery(
-            { workspaceId: workspaceId! },
-            { enabled: !!workspaceId }
-        );
+        trpc.pmProjects.list.useQuery();
 
     const createProject = trpc.pmProjects.create.useMutation({
         onSuccess: () => {
             // Invalidate cache so the new project appears immediately
-            utils.pmProjects.list.invalidate({ workspaceId: workspaceId! });
+            utils.pmProjects.list.invalidate();
             closeModal();
         },
         onError: (err) => {
@@ -64,7 +61,7 @@ export default function ProjectsPage() {
 
     const filtered =
         projects?.filter(
-            (p) =>
+            (p: any) =>
                 p.name.toLowerCase().includes(search.toLowerCase()) ||
                 p.key.toLowerCase().includes(search.toLowerCase())
         ) || [];
@@ -142,7 +139,7 @@ export default function ProjectsPage() {
             )}
 
             {/* Loading skeletons */}
-            {isLoading && workspaceId && (
+            {isLoading && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <ProjectCardSkeleton />
                     <ProjectCardSkeleton />
@@ -151,7 +148,7 @@ export default function ProjectsPage() {
             )}
 
             {/* Empty state */}
-            {!isLoading && workspaceId && filtered.length === 0 && (
+            {!isLoading && filtered.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border rounded-lg text-muted-foreground">
                     <FolderKanban size={48} className="mb-4 opacity-50" />
                     <p className="font-medium">No projects found.</p>
@@ -160,9 +157,9 @@ export default function ProjectsPage() {
             )}
 
             {/* Project grid */}
-            {!isLoading && workspaceId && filtered.length > 0 && (
+            {!isLoading && filtered.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {filtered.map((project) => (
+                    {filtered.map((project: any) => (
                         <Link
                             key={project.id}
                             href={`/${locale}/pm/projects/${project.id}`}

@@ -1,3 +1,4 @@
+import prisma from "../prisma";
 /**
  * Friday PM AI Inner Agent
  * LangGraph-based agent connected to local Ollama + LangFuse tracing.
@@ -13,9 +14,9 @@ import { StateGraph, Annotation, END } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { PrismaClient, PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
 
-const prisma = new PrismaClient();
+
 
 // ---------------------------------------------------------------------------
 // LLM — local Ollama instance (points to the docker-compose service)

@@ -5,7 +5,9 @@ import { useTranslations } from "next-intl";
 import { ModuleSwitcher } from "@/components/shell/ModuleSwitcher";
 import { NotificationCenter } from "@/components/shell/NotificationCenter";
 import { UserMenu } from "@/components/shell/UserMenu";
-import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -14,6 +16,16 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const t = useTranslations("Shell");
+    const pathname = usePathname();
+
+    const pmNavItems = [
+        { href: "/en/pm/issues", label: "Issues", icon: ListOrdered },
+        { href: "/en/pm/board", label: "Board", icon: LayoutDashboard },
+        { href: "/en/pm/analytics", label: "Analytics", icon: BarChart2 },
+        { href: "/en/pm/reports", label: "Reports", icon: FileText },
+    ];
+
+    const isPmModule = pathname?.includes("/pm/");
 
     return (
         <div
@@ -35,8 +47,27 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-2">
-                {/* Module specific nav items would go here */}
-                {isOpen && <p className="text-xs text-muted-foreground px-2 py-4">Modules Navigation Space</p>}
+                {isPmModule && (
+                    <nav className="space-y-1">
+                        {isOpen && <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 pt-2 pb-1 tracking-wider">Project</p>}
+                        {pmNavItems.map(({ href, label, icon: Icon }) => {
+                            const isActive = pathname?.includes(href.split("/").pop() || "");
+                            return (
+                                <Link
+                                    key={href}
+                                    href={href}
+                                    className={`flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors ${isActive
+                                        ? "bg-primary/10 text-primary font-medium"
+                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                        }`}
+                                >
+                                    <Icon size={18} className="flex-shrink-0" />
+                                    {isOpen && <span>{label}</span>}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                )}
             </div>
 
             <div className="p-2 border-t border-border flex flex-col gap-2">

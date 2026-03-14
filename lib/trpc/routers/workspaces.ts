@@ -1,7 +1,6 @@
+import { z } from "zod";
 import { router, publicProcedure } from "../init";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export const workspacesRouter = router({
     list: publicProcedure.query(async () => {
@@ -9,4 +8,23 @@ export const workspacesRouter = router({
             orderBy: { createdAt: "asc" },
         });
     }),
+    
+    members: publicProcedure
+        .input(z.object({ workspaceId: z.string() }))
+        .query(async ({ input }) => {
+            return prisma.workspaceMember.findMany({
+                where: { workspaceId: input.workspaceId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            image: true
+                        }
+                    }
+                },
+                orderBy: { createdAt: "asc" },
+            });
+        }),
 });

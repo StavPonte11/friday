@@ -1,17 +1,17 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../init";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 // Simplified public procedures for foundational phase.
 // In actual production, use privateProcedure with protected session/workspace context.
 export const pmProjectsRouter = router({
     list: publicProcedure
-        .input(z.object({ workspaceId: z.string() }))
+        .input(z.object({ workspaceId: z.string().optional() }).optional())
         .query(async ({ input }) => {
+            const whereClause = input?.workspaceId ? { workspaceId: input.workspaceId } : undefined;
             return prisma.pmProject.findMany({
-                where: { workspaceId: input.workspaceId },
+                where: whereClause,
                 include: {
                     _count: {
                         select: { issues: true, sprints: true }

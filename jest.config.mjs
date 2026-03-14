@@ -6,47 +6,44 @@ const createJestConfig = nextJest({
 
 /** @type {import('jest').Config} */
 const config = {
+    testEnvironment: 'node',
+    transform: {
+        '^.+\\.(t|j)sx?$': ['ts-jest', { isolatedModules: true }],
+    },
+    extensionsToTreatAsEsm: ['.ts', '.tsx'],
+    moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/$1',
+        '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
+        '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js'
+    },
+    testPathIgnorePatterns: ['/node_modules/', '/.next/'],
+    transformIgnorePatterns: ['node_modules/(?!(@t3-oss|langfuse|msw|@mswjs|undici|until-async|is-node-process)/)'],
     projects: [
         {
             displayName: 'unit:lib',
             testEnvironment: 'node',
             setupFiles: ['<rootDir>/tests/jest.polyfills.js'],
-            setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+            setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
             testMatch: ['<rootDir>/tests/unit/lib/**/*.test.ts'],
-            moduleNameMapper: {
-                '^@/(.*)$': '<rootDir>/$1',
-            },
+            transform: { '^.+\\.(t|j)sx?$': ['ts-jest', { isolatedModules: true }] },
         },
         {
             displayName: 'unit:components',
             testEnvironment: 'jsdom',
             setupFiles: ['<rootDir>/tests/jest.polyfills.js'],
-            setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+            setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
             testMatch: ['<rootDir>/tests/unit/components/**/*.test.tsx'],
-            moduleNameMapper: {
-                '^@/(.*)$': '<rootDir>/$1',
-            },
+            transform: { '^.+\\.(t|j)sx?$': ['ts-jest', { isolatedModules: true }] },
         },
         {
             displayName: 'integration',
             testEnvironment: 'node',
             setupFiles: ['<rootDir>/tests/jest.polyfills.js'],
-            setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+            setupFilesAfterEnv: [],
             testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
-            moduleNameMapper: {
-                '^@/(.*)$': '<rootDir>/$1',
-            },
+            transform: { '^.+\\.(t|j)sx?$': ['ts-jest', { isolatedModules: true }] },
         }
     ],
 }
 
-const asyncConfig = createJestConfig(config)
-
-export default async () => {
-    const resolvedConfig = await asyncConfig()
-    // By default next/jest ignores node_modules. We need to tell it to transform these specific ESM modules.
-    resolvedConfig.transformIgnorePatterns = [
-        'node_modules/(?!(@t3-oss|langfuse|msw|@mswjs|undici|until-async|is-node-process)/)'
-    ]
-    return resolvedConfig
-}
+export default config;

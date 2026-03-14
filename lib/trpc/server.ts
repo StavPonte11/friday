@@ -2,6 +2,7 @@ import { router, publicProcedure } from './init';
 import { tracesRouter } from './routers/traces';
 import { pmProjectsRouter } from './routers/pm-projects';
 import { pmIssuesRouter } from './routers/pm-issues';
+import { pmSprintsRouter } from './routers/pm-sprints';
 import { pmAnalyticsRouter } from './routers/pm-analytics';
 import { workspacesRouter } from './routers/workspaces';
 
@@ -12,6 +13,7 @@ export const appRouter = router({
     workspaces: workspacesRouter,
     pmProjects: pmProjectsRouter,
     pmIssues: pmIssuesRouter,
+    pmSprints: pmSprintsRouter,
     pmAnalytics: pmAnalyticsRouter,
 });
 

@@ -1,12 +1,13 @@
+import prisma from "../../lib/prisma";
 /**
  * Jira Sync Worker
  * Pulls issues from Jira REST API and upserts them into Friday PM via Prisma.
  * Triggered by RabbitMQ message: { projectId, jiraProjectKey, accessToken }
  */
 import { queueService, QUEUES } from "../shared/queues";
-import { PrismaClient, PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
 
-const prisma = new PrismaClient();
+
 
 interface JiraSyncPayload {
     projectId: string;        // Friday PM project ID

@@ -1,10 +1,10 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // -----------------------------------------------------------------------------
@@ -164,6 +164,8 @@ model PmIssue {
   status      PmIssueStatus   @default(TODO)
   priority    PmIssuePriority @default(NONE)
   storyPoints Int?
+  complexityScore Int?
+  predictedTime   String?
 
   assigneeId String?
   creatorId  String

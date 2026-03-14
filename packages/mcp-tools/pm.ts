@@ -79,4 +79,43 @@ export const pmMcpTools = [
             required: ["projectId", "description"],
         },
     },
+    {
+        name: "pm_generate_issue_insights",
+        description: "Use AI to estimate complexity, predicted completion time, and required skills for an existing issue.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                issueId: { type: "string", description: "The ID of the PM issue to analyze." },
+            },
+            required: ["issueId"],
+        },
+    },
+    {
+        name: "pm_recommend_sprint",
+        description: "Ask the AI to recommend an optimal sprint plan for a project, selecting issues from the backlog to fit the team velocity.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The Friday PM project ID." },
+                targetVelocity: { type: "number", description: "Team velocity in story points for the sprint. Defaults to 30." },
+            },
+            required: ["projectId"],
+        },
+    },
+    {
+        name: "pm_move_issue",
+        description: "Move an issue to a different status column on the board (e.g. from TODO to IN_PROGRESS).",
+        inputSchema: {
+            type: "object",
+            properties: {
+                issueId: { type: "string", description: "The ID of the PM issue to move." },
+                status: {
+                    type: "string",
+                    enum: ["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "CANCELED"],
+                    description: "The new status for the issue.",
+                },
+            },
+            required: ["issueId", "status"],
+        },
+    },
 ];

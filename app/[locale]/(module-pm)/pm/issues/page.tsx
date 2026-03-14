@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { ListOrdered, Plus, Filter, CircleDashed, CheckCircle2, AlertCircle } from "lucide-react";
+import { ListOrdered, Filter, CircleDashed, CheckCircle2, AlertCircle, Building } from "lucide-react";
 import { useLocale } from "next-intl";
 import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
+import { IssueInsightsPanel } from "@/components/issues/IssueInsightsPanel";
 
 // Simplified mapping for foundatoin phase
 const statusIcons = {
@@ -16,14 +18,28 @@ const statusIcons = {
     [PmIssueStatus.CANCELED]: <AlertCircle size={16} className="text-red-500 line-through" />,
 };
 
-// Hardcoded for foundational mock testing matching the active project
-const MOCK_PROJECT_ID = "cm7k12abc0001xyz";
-
 export default function IssuesPage() {
     const locale = useLocale();
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
-    const { data: issues, isLoading } = trpc.pmIssues.listByProject.useQuery({ projectId: MOCK_PROJECT_ID });
+    // Fetch all PM Projects
+    const { data: projects, isLoading: isProjectsLoading } = trpc.pmProjects.list.useQuery();
+
+    useEffect(() => {
+        if (projects && projects.length > 0 && (!selectedProjectId || !projects.find((p: any) => p.id === selectedProjectId))) {
+            setSelectedProjectId(projects[0].id);
+        } else if (projects?.length === 0) {
+            setSelectedProjectId("");
+        }
+    }, [projects, selectedProjectId]);
+
+    const { data: issues, isLoading } = trpc.pmIssues.listByProject.useQuery(
+        { projectId: selectedProjectId },
+        { enabled: !!selectedProjectId }
+    );
+
+    const selectedIssue = issues?.find((i: any) => i.id === selectedIssueId);
 
     return (
         <div className="flex h-full max-w-7xl mx-auto overflow-hidden">
@@ -33,9 +49,31 @@ export default function IssuesPage() {
                         <h2 className="text-2xl font-bold tracking-tight">Issues</h2>
                         <p className="text-muted-foreground">Manage and track work items across the project.</p>
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90">
-                        <Plus size={16} /> New Issue
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2 shadow-sm">
+                            <Building size={16} className="text-muted-foreground" />
+                            <select 
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer outline-none w-40"
+                                disabled={isProjectsLoading}
+                            >
+                                {isProjectsLoading ? (
+                                    <option>Loading...</option>
+                                ) : projects?.length ? (
+                                    projects.map((p: any) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))
+                                ) : (
+                                    <option value="">No projects</option>
+                                )}
+                            </select>
+                        </div>
+                        {selectedProjectId && projects && <CreateIssueModal 
+                            projectId={selectedProjectId} 
+                            workspaceId={projects.find((p: any) => p.id === selectedProjectId)?.workspaceId || ""} 
+                        />}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 bg-card border border-border p-2 rounded-lg">
@@ -45,13 +83,13 @@ export default function IssuesPage() {
 
                 {isLoading ? (
                     <div className="space-y-2">
-                        {[1, 2, 3, 4, 5].map(i => (
+                        {[1, 2, 3, 4, 5].map((i: any) => (
                             <div key={i} className="h-16 rounded-lg bg-card animate-pulse border border-border"></div>
                         ))}
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2 relative">
-                        {issues?.map((issue) => (
+                        {issues?.map((issue: any) => (
                             <div
                                 key={issue.id}
                                 onClick={() => setSelectedIssueId(issue.id)}
@@ -94,11 +132,11 @@ export default function IssuesPage() {
             </div>
 
             {/* Slide Over Details Pane */}
-            {selectedIssueId && (
+            {selectedIssueId && selectedIssue && (
                 <div className="w-full md:w-[600px] border-l border-border bg-card flex flex-col shadow-xl h-full slide-over animate-in slide-in-from-right">
                     <div className="flex items-center justify-between p-4 border-b border-border">
                         <div className="flex items-center gap-2 text-sm text-primary font-mono bg-primary/10 px-2 py-1 rounded">
-                            {issues?.find(i => i.id === selectedIssueId)?.key}
+                            {selectedIssue.key}
                         </div>
                         <button
                             onClick={() => setSelectedIssueId(null)}
@@ -110,17 +148,25 @@ export default function IssuesPage() {
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {/* Complex Rich Text / Tiptap implementation will go here. For now rendering placeholders. */}
-                        <h2 className="text-xl font-bold">{issues?.find(i => i.id === selectedIssueId)?.title}</h2>
+                        <h2 className="text-xl font-bold">{selectedIssue.title}</h2>
+
+                        {/* AI Insights Panel */}
+                        <IssueInsightsPanel
+                            issueId={selectedIssue.id}
+                            initialComplexity={(selectedIssue as any).complexityScore}
+                            initialTime={(selectedIssue as any).predictedTime}
+                        />
+
                         <div className="prose prose-sm dark:prose-invert">
-                            <p className="text-muted-foreground">{issues?.find(i => i.id === selectedIssueId)?.description || "No description provided. Click to add one."}</p>
+                            <p className="text-muted-foreground">{selectedIssue.description || "No description provided. Click to add one."}</p>
                         </div>
 
                         <div className="border border-border rounded-lg p-4 grid grid-cols-2 gap-4 bg-muted/30">
                             <div>
                                 <span className="text-xs text-muted-foreground block mb-1">Status</span>
                                 <div className="text-sm font-medium capitalize flex items-center gap-2">
-                                    {statusIcons[issues?.find(i => i.id === selectedIssueId)?.status as PmIssueStatus || PmIssueStatus.TODO]}
-                                    {issues?.find(i => i.id === selectedIssueId)?.status.replace('_', ' ').toLowerCase()}
+                                    {statusIcons[selectedIssue.status as PmIssueStatus || PmIssueStatus.TODO]}
+                                    {selectedIssue.status.replace('_', ' ').toLowerCase()}
                                 </div>
                             </div>
                             <div>
@@ -130,7 +176,7 @@ export default function IssuesPage() {
                             <div>
                                 <span className="text-xs text-muted-foreground block mb-1">Priority</span>
                                 <div className="text-sm font-medium capitalize">
-                                    {issues?.find(i => i.id === selectedIssueId)?.priority.toLowerCase()}
+                                    {selectedIssue.priority.toLowerCase()}
                                 </div>
                             </div>
                         </div>

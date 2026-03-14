@@ -1,16 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import {
     AreaChart, Area, BarChart, Bar, XAxis, YAxis,
     CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     ScatterChart, Scatter, LineChart, Line
 } from "recharts";
-import { TrendingDown, Zap, GitBranch, Clock, Users } from "lucide-react";
-
-const MOCK_PROJECT_ID = "cm7k12abc0001xyz";
-const MOCK_SPRINT_ID = "sprint-001";
+import { TrendingDown, Zap, GitBranch, Clock, Users, Building } from "lucide-react";
 
 // --- Helpers ---
 const CHART_COLORS = {
@@ -46,14 +43,40 @@ function ChartCard({ children }: { children: React.ReactNode }) {
 
 // --- Main Page ---
 export default function AnalyticsPage() {
-    const { data: burndown } = trpc.pmAnalytics.burndown.useQuery({ sprintId: MOCK_SPRINT_ID });
-    const { data: velocity } = trpc.pmAnalytics.velocity.useQuery({ projectId: MOCK_PROJECT_ID });
-    const { data: cfd } = trpc.pmAnalytics.cumulativeFlow.useQuery({ projectId: MOCK_PROJECT_ID, days: 14 });
-    const { data: cycleTimes } = trpc.pmAnalytics.cycleTime.useQuery({ projectId: MOCK_PROJECT_ID });
-    const { data: workload } = trpc.pmAnalytics.workload.useQuery({ projectId: MOCK_PROJECT_ID });
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+    // Fetch all PM Projects
+    const { data: projects, isLoading: isProjectsLoading } = trpc.pmProjects.list.useQuery();
+
+    useEffect(() => {
+        if (projects && projects.length > 0 && (!selectedProjectId || !projects.find((p: any) => p.id === selectedProjectId))) {
+            setSelectedProjectId(projects[0].id);
+        } else if (projects?.length === 0) {
+            setSelectedProjectId("");
+        }
+    }, [projects, selectedProjectId]);
+
+    // We can't query reliably without a projectId, so we pause queries if it's empty
+    const { data: velocity } = trpc.pmAnalytics.velocity.useQuery(
+        { projectId: selectedProjectId },
+        { enabled: !!selectedProjectId }
+    );
+    const { data: cfd } = trpc.pmAnalytics.cumulativeFlow.useQuery(
+        { projectId: selectedProjectId, days: 14 },
+        { enabled: !!selectedProjectId }
+    );
+    const { data: cycleTimes } = trpc.pmAnalytics.cycleTime.useQuery(
+        { projectId: selectedProjectId },
+        { enabled: !!selectedProjectId }
+    );
+    const { data: workload } = trpc.pmAnalytics.workload.useQuery(
+        { projectId: selectedProjectId },
+        { enabled: !!selectedProjectId }
+    );
 
     // Fallback "demo" data so charts look great even with empty DB
-    const burndownData = burndown?.length ? burndown : [
+    // Since there's no Sprint list built out yet, we'll keep burndown entirely demo for now
+    const burndownData = [
         { date: "Feb 17", remaining: 42, ideal: 42 },
         { date: "Feb 18", remaining: 38, ideal: 36 },
         { date: "Feb 19", remaining: 35, ideal: 30 },
@@ -101,9 +124,31 @@ export default function AnalyticsPage() {
 
     return (
         <div className="h-full overflow-y-auto p-6 space-y-8 max-w-7xl mx-auto">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
-                <p className="text-muted-foreground">Team performance, sprint health, and delivery insights.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
+                    <p className="text-muted-foreground">Team performance, sprint health, and delivery insights.</p>
+                </div>
+                
+                <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2 shadow-sm">
+                    <Building size={16} className="text-muted-foreground" />
+                    <select 
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value)}
+                        className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer outline-none w-48"
+                        disabled={isProjectsLoading}
+                    >
+                        {isProjectsLoading ? (
+                            <option>Loading projects...</option>
+                        ) : projects?.length ? (
+                            projects.map((p: any) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))
+                        ) : (
+                            <option value="">No projects found</option>
+                        )}
+                    </select>
+                </div>
             </div>
 
             {/* Row 1: Burndown + Velocity */}

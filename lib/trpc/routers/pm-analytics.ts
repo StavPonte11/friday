@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../init";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../prisma";
 
 export const pmAnalyticsRouter = router({
     /**

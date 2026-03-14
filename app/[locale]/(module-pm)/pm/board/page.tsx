@@ -6,8 +6,8 @@ import { PmIssueStatus } from "@prisma/client";
 import { useLocale } from "next-intl";
 import { useEffect, useState } from "react";
 import io from "socket.io-client";
-
-const MOCK_PROJECT_ID = "cm7k12abc0001xyz";
+import { SprintPlannerModal } from "@/components/issues/SprintPlannerModal";
+import { Building } from "lucide-react";
 
 const COLUMNS = [
     { id: PmIssueStatus.TODO, title: "To Do" },
@@ -20,7 +20,23 @@ let socket: ReturnType<typeof io> | undefined;
 
 export default function KanbanBoardPage() {
     const locale = useLocale();
-    const { data: initialIssues, refetch } = trpc.pmIssues.listByProject.useQuery({ projectId: MOCK_PROJECT_ID });
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+    // Fetch all PM Projects
+    const { data: projects, isLoading: isProjectsLoading } = trpc.pmProjects.list.useQuery();
+
+    useEffect(() => {
+        if (projects && projects.length > 0 && (!selectedProjectId || !projects.find((p: any) => p.id === selectedProjectId))) {
+            setSelectedProjectId(projects[0].id);
+        } else if (projects?.length === 0) {
+            setSelectedProjectId("");
+        }
+    }, [projects, selectedProjectId]);
+
+    const { data: initialIssues, refetch } = trpc.pmIssues.listByProject.useQuery(
+        { projectId: selectedProjectId },
+        { enabled: !!selectedProjectId }
+    );
     const updateIssue = trpc.pmIssues.create.useMutation(); // Using create mutation router temp fallback for update. In reality we'd use a .update mutation.
 
     const [issues, setIssues] = useState<any[]>([]);
@@ -31,10 +47,12 @@ export default function KanbanBoardPage() {
     }, [initialIssues]);
 
     useEffect(() => {
+        if (!selectedProjectId) return;
+
         socket = io(process.env.NEXT_PUBLIC_SITE_URL || "", { path: "/api/socket/io" });
 
         socket?.on("connect", () => {
-            socket?.emit("join-project", MOCK_PROJECT_ID);
+            socket?.emit("join-project", selectedProjectId);
         });
 
         socket?.on("issue-moved", (data: { issueId: string, newStatus: string }) => {
@@ -42,7 +60,7 @@ export default function KanbanBoardPage() {
         });
 
         return () => { socket?.disconnect(); };
-    }, []);
+    }, [selectedProjectId]);
 
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
@@ -65,8 +83,8 @@ export default function KanbanBoardPage() {
             setIssues(updatedIssues);
 
             // Optimistically broadcast real-time
-            if (socket) {
-                socket.emit("issue-moved", { projectId: MOCK_PROJECT_ID, issueId, newStatus });
+            if (socket && selectedProjectId) {
+                socket.emit("issue-moved", { projectId: selectedProjectId, issueId, newStatus });
             }
 
             // In real app: updateIssue.mutate({ id: issueId, status: newStatus });
@@ -75,9 +93,33 @@ export default function KanbanBoardPage() {
 
     return (
         <div className="h-full flex flex-col pt-6 pb-0 overflow-hidden w-full mx-auto space-y-4">
-            <div className="px-6">
-                <h2 className="text-2xl font-bold tracking-tight">Active Board</h2>
-                <p className="text-muted-foreground">Sprint 1 • 2 Days Remaining</p>
+            <div className="px-6 flex items-start justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Active Board</h2>
+                    <p className="text-muted-foreground">Sprint 1 • 2 Days Remaining</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2 shadow-sm">
+                        <Building size={16} className="text-muted-foreground" />
+                        <select 
+                            value={selectedProjectId}
+                            onChange={(e) => setSelectedProjectId(e.target.value)}
+                            className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer outline-none w-40"
+                            disabled={isProjectsLoading}
+                        >
+                            {isProjectsLoading ? (
+                                <option>Loading...</option>
+                            ) : projects?.length ? (
+                                projects.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))
+                            ) : (
+                                <option value="">No projects</option>
+                            )}
+                        </select>
+                    </div>
+                    {selectedProjectId && <SprintPlannerModal projectId={selectedProjectId} />}
+                </div>
             </div>
 
             <DndContext collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
