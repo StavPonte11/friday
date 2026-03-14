@@ -4,24 +4,29 @@ import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { ListOrdered, Filter, CircleDashed, CheckCircle2, AlertCircle, Building } from "lucide-react";
 import { useLocale } from "next-intl";
-import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {  PmIssuePriority } from "@prisma/client";
 import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
+import { IssueEditor } from "@/components/issues/IssueEditor";
 import { IssueInsightsPanel } from "@/components/issues/IssueInsightsPanel";
+import { IssueFilters } from "@/components/issues/IssueFilters";
+import { BulkActionsBar } from "@/components/issues/BulkActionsBar";
 
 // Simplified mapping for foundatoin phase
 const statusIcons = {
-    [PmIssueStatus.TODO]: <CircleDashed size={16} className="text-muted-foreground" />,
-    [PmIssueStatus.IN_PROGRESS]: <CircleDashed size={16} className="text-blue-500" />,
-    [PmIssueStatus.DONE]: <CheckCircle2 size={16} className="text-green-500" />,
-    [PmIssueStatus.BACKLOG]: <CircleDashed size={16} className="text-muted-foreground opacity-50" />,
-    [PmIssueStatus.IN_REVIEW]: <AlertCircle size={16} className="text-purple-500" />,
-    [PmIssueStatus.CANCELED]: <AlertCircle size={16} className="text-red-500 line-through" />,
+    ["TODO"]: <CircleDashed size={16} className="text-muted-foreground" />,
+    ["IN_PROGRESS"]: <CircleDashed size={16} className="text-blue-500" />,
+    ["DONE"]: <CheckCircle2 size={16} className="text-green-500" />,
+    ["BACKLOG"]: <CircleDashed size={16} className="text-muted-foreground opacity-50" />,
+    ["IN_REVIEW"]: <AlertCircle size={16} className="text-purple-500" />,
+    ["CANCELED"]: <AlertCircle size={16} className="text-red-500 line-through" />,
 };
 
 export default function IssuesPage() {
     const locale = useLocale();
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
     const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+    const [filters, setFilters] = useState<any>({ projectId: "" });
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     // Fetch all PM Projects
     const { data: projects, isLoading: isProjectsLoading } = trpc.pmProjects.list.useQuery();
@@ -29,15 +34,24 @@ export default function IssuesPage() {
     useEffect(() => {
         if (projects && projects.length > 0 && (!selectedProjectId || !projects.find((p: any) => p.id === selectedProjectId))) {
             setSelectedProjectId(projects[0].id);
+            setFilters({ projectId: projects[0].id });
         } else if (projects?.length === 0) {
             setSelectedProjectId("");
+            setFilters({ projectId: "" });
         }
     }, [projects, selectedProjectId]);
 
-    const { data: issues, isLoading } = trpc.pmIssues.listByProject.useQuery(
-        { projectId: selectedProjectId },
-        { enabled: !!selectedProjectId }
+    const { data: issues, isLoading, refetch } = trpc.pmIssues.listByProject.useQuery(
+        filters,
+        { enabled: !!filters.projectId }
     );
+
+    const toggleSelection = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
 
     const selectedIssue = issues?.find((i: any) => i.id === selectedIssueId);
 
@@ -76,10 +90,11 @@ export default function IssuesPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-card border border-border p-2 rounded-lg">
-                    <Filter size={16} className="text-muted-foreground ml-2" />
-                    <input type="text" placeholder="Filter issues..." className="bg-transparent border-none outline-none flex-1 text-sm placeholder:text-muted-foreground text-foreground px-2" />
-                </div>
+                <IssueFilters 
+                    projectId={selectedProjectId} 
+                    currentFilters={filters} 
+                    onFilterChange={setFilters} 
+                />
 
                 {isLoading ? (
                     <div className="space-y-2">
@@ -93,10 +108,16 @@ export default function IssuesPage() {
                             <div
                                 key={issue.id}
                                 onClick={() => setSelectedIssueId(issue.id)}
-                                className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${selectedIssueId === issue.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-border/80'}`}
+                                className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer hover:shadow-sm transition-all group ${selectedIssueId === issue.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-border/80'}`}
                             >
+                                <div 
+                                    className={`flex-shrink-0 w-5 h-5 border rounded flex items-center justify-center transition-colors ${selectedIds.includes(issue.id) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}
+                                    onClick={(e) => toggleSelection(issue.id, e)}
+                                >
+                                    {selectedIds.includes(issue.id) && <CheckCircle2 size={12} className="text-primary-foreground" />}
+                                </div>
                                 <div className="flex-shrink-0" title={issue.status}>
-                                    {statusIcons[issue.status as PmIssueStatus] || statusIcons[PmIssueStatus.TODO]}
+                                    {statusIcons[issue.status as keyof typeof statusIcons] || statusIcons["TODO"]}
                                 </div>
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <span className="font-semibold text-sm truncate text-foreground">{issue.title}</span>
@@ -104,6 +125,9 @@ export default function IssuesPage() {
                                         <span className="font-mono uppercase px-1.5 py-0.5 bg-muted rounded border border-border/50">{issue.key}</span>
                                         {issue.priority !== PmIssuePriority.NONE && (
                                             <span className="capitalize">{issue.priority.toLowerCase()} Priority</span>
+                                        )}
+                                        {issue.type && (
+                                            <span className="px-1 py-0.5 bg-secondary rounded text-[10px] uppercase font-bold">{issue.type}</span>
                                         )}
                                     </div>
                                 </div>
@@ -131,6 +155,13 @@ export default function IssuesPage() {
                 )}
             </div>
 
+            <BulkActionsBar 
+                projectId={selectedProjectId}
+                selectedIds={selectedIds}
+                onClearSelection={() => setSelectedIds([])}
+                onSuccess={() => refetch()}
+            />
+
             {/* Slide Over Details Pane */}
             {selectedIssueId && selectedIssue && (
                 <div className="w-full md:w-[600px] border-l border-border bg-card flex flex-col shadow-xl h-full slide-over animate-in slide-in-from-right">
@@ -146,44 +177,8 @@ export default function IssuesPage() {
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                        {/* Complex Rich Text / Tiptap implementation will go here. For now rendering placeholders. */}
-                        <h2 className="text-xl font-bold">{selectedIssue.title}</h2>
-
-                        {/* AI Insights Panel */}
-                        <IssueInsightsPanel
-                            issueId={selectedIssue.id}
-                            initialComplexity={(selectedIssue as any).complexityScore}
-                            initialTime={(selectedIssue as any).predictedTime}
-                        />
-
-                        <div className="prose prose-sm dark:prose-invert">
-                            <p className="text-muted-foreground">{selectedIssue.description || "No description provided. Click to add one."}</p>
-                        </div>
-
-                        <div className="border border-border rounded-lg p-4 grid grid-cols-2 gap-4 bg-muted/30">
-                            <div>
-                                <span className="text-xs text-muted-foreground block mb-1">Status</span>
-                                <div className="text-sm font-medium capitalize flex items-center gap-2">
-                                    {statusIcons[selectedIssue.status as PmIssueStatus || PmIssueStatus.TODO]}
-                                    {selectedIssue.status.replace('_', ' ').toLowerCase()}
-                                </div>
-                            </div>
-                            <div>
-                                <span className="text-xs text-muted-foreground block mb-1">Assignee</span>
-                                <div className="text-sm font-medium">Unassigned</div>
-                            </div>
-                            <div>
-                                <span className="text-xs text-muted-foreground block mb-1">Priority</span>
-                                <div className="text-sm font-medium capitalize">
-                                    {selectedIssue.priority.toLowerCase()}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-4 border-t border-border bg-muted/20">
-                        <input type="text" placeholder="Add a comment..." className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                    <div className="flex-1 overflow-y-auto">
+                        <IssueEditor issueId={selectedIssue.id} projectId={selectedProjectId} />
                     </div>
                 </div>
             )}

@@ -146,4 +146,39 @@ export const pmAnalyticsRouter = router({
 
             return Object.values(byAssignee).sort((a, b) => b.points - a.points);
         }),
+
+    /**
+     * Sprint Health: completion rate vs scope creep
+     */
+    sprintHealth: publicProcedure
+        .input(z.object({ sprintId: z.string() }))
+        .query(async ({ input }) => {
+            const sprint = await prisma.pmSprint.findUnique({
+                where: { id: input.sprintId },
+                include: { issues: true },
+            });
+            if (!sprint) return null;
+
+            const totalIssues = sprint.issues.length;
+            const completedIssues = sprint.issues.filter(i => i.status === "DONE").length;
+            const completionRate = totalIssues > 0 ? (completedIssues / totalIssues) * 100 : 0;
+
+            // Scope creep: issues added after sprint start
+            const addedAfterStart = sprint.issues.filter(i => 
+                sprint.startDate && i.createdAt > sprint.startDate
+            ).length;
+            const scopeCreep = totalIssues > 0 ? (addedAfterStart / totalIssues) * 100 : 0;
+
+            // Health Score calculation (naive): Completion % - (Scope Creep % / 2)
+            const score = Math.max(0, Math.min(100, completionRate - (scopeCreep / 2)));
+
+            return {
+                score,
+                completionRate,
+                scopeCreep,
+                totalIssues,
+                completedIssues,
+                addedAfterStart
+            };
+        }),
 });

@@ -14,7 +14,7 @@ import { StateGraph, Annotation, END } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {   PmIssuePriority } from "@prisma/client";
 
 
 
@@ -72,7 +72,7 @@ Respond as JSON: { "title": "...", "description": "..." }`;
                 title: parsed.title,
                 description: parsed.description,
                 priority: (priority as PmIssuePriority) ?? PmIssuePriority.MEDIUM,
-                status: PmIssueStatus.BACKLOG,
+                status: "BACKLOG",
                 creatorId: systemUser.id,
             },
         });
@@ -156,7 +156,7 @@ Provide a concise 3-point health report covering:
 const autoPrioritizeBacklogTool = tool(
     async ({ projectId }) => {
         const issues = await prisma.pmIssue.findMany({
-            where: { projectId, status: PmIssueStatus.BACKLOG },
+            where: { projectId, status: "BACKLOG" },
             select: { key: true, title: true, storyPoints: true, priority: true },
             orderBy: { createdAt: "asc" },
             take: 20,

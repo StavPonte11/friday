@@ -1,6 +1,6 @@
 import prisma from "./lib/prisma";
 import { appRouter } from "./lib/trpc/server";
-import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {   PmIssuePriority } from "@prisma/client";
 
 
 
@@ -46,7 +46,7 @@ async function runTest() {
             projectId: mockProjectId,
             title: "Test Issue Creation",
             description: "Testing TRPC mutation directly",
-            status: PmIssueStatus.TODO,
+            status: "TODO",
             priority: PmIssuePriority.HIGH,
             creatorId: mockUserId
         };

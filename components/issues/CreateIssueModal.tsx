@@ -30,14 +30,25 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
+// import { PmIssuePriority } from "@prisma/client";
+const PmIssuePriority = {
+    NONE: "NONE",
+    LOW: "LOW",
+    MEDIUM: "MEDIUM",
+    HIGH: "HIGH",
+    URGENT: "URGENT"
+} as any;
+
 import { trpc } from "@/lib/trpc/client";
-import { Plus, Sparkles, Loader2, User, Hash } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Plus, Sparkles, Loader2, User, Hash, Bot } from "lucide-react";
+
+export const DEFAULT_STATUSES = ["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "CANCELED"] as const;
 
 const formSchema = z.object({
     title: z.string().min(1, { message: "Title is required" }),
     description: z.string().optional(),
-    status: z.nativeEnum(PmIssueStatus),
+    status: z.enum(DEFAULT_STATUSES),
     priority: z.nativeEnum(PmIssuePriority),
     assigneeId: z.string().optional(),
     storyPoints: z.number().min(0).optional(),
@@ -51,6 +62,7 @@ interface CreateIssueModalProps {
 }
 
 export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIssueModalProps) {
+    const { data: session } = useSession();
     const [open, setOpen] = useState(false);
     const utils = trpc.useUtils();
 
@@ -65,7 +77,7 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
         defaultValues: {
             title: "",
             description: "",
-            status: PmIssueStatus.TODO,
+            status: "TODO",
             priority: PmIssuePriority.NONE,
             assigneeId: undefined,
             storyPoints: undefined,
@@ -77,7 +89,7 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
 
     const generateMutation = trpc.pmIssues.generate.useMutation({
         onSuccess: (data) => {
-            form.setValue("title", data.title);
+            (form.setValue as any)("title", data.title);
 
             // Format description with subtasks and criteria
             let fullDesc = data.description + "\n\n";
@@ -88,7 +100,7 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                 fullDesc += "### Acceptance Criteria\n" + data.criteria.map(c => `- ${c}`).join("\n");
             }
 
-            form.setValue("description", fullDesc.trim());
+            (form.setValue as any)("description", fullDesc.trim());
             setAiPrompt("");
         }
     });
@@ -119,10 +131,15 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                         assignee: null,
                         labels: [],
                         sprint: null,
-                        priority: newIssue.priority || PmIssuePriority.NONE,
-                        status: newIssue.status || PmIssueStatus.TODO,
+                        priority: (newIssue.priority as any) || PmIssuePriority.NONE,
+                        status: newIssue.status || "TODO",
                         description: newIssue.description || null,
-                    },
+                        type: "TASK",
+                        customFields: null,
+                        parentId: null,
+                        parent: null,
+                        children: [],
+                    } as any,
                     ...previousIssues,
                 ]);
             }
@@ -147,15 +164,13 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
     });
 
     function onSubmit(values: z.infer<typeof formSchema>) {
-        if (!projectId) return;
+        const userId = (session?.user as any)?.id || "mock-creator-id";
         
         createMutation.mutate({
             ...values,
             projectId,
-            creatorId: "mock-creator-id", // Hardcoded for foundational mock, usually from session
-            assigneeId: values.assigneeId || undefined,
-            // Only pass numbers if they exist
-            // (trpc router currently doesn't accept storyPoints/complexity, but we pass them for when it does. We will update the router next)
+            creatorId: userId,
+            assigneeId: values.assigneeId === "unassigned" ? null : (values.assigneeId || null),
         });
     }
 
@@ -245,7 +260,7 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {Object.values(PmIssueStatus).map((status) => (
+                                                {DEFAULT_STATUSES.map((status) => (
                                                     <SelectItem key={status} value={status}>
                                                         {status.replace('_', ' ')}
                                                     </SelectItem>
@@ -270,9 +285,9 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {Object.values(PmIssuePriority).map((priority) => (
-                                                    <SelectItem key={priority} value={priority}>
-                                                        {priority}
+                                                {Object.values(PmIssuePriority).map((priority: any) => (
+                                                    <SelectItem key={priority as string} value={priority as string}>
+                                                        {priority as string}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

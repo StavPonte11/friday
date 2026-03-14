@@ -5,7 +5,7 @@ import prisma from "../../lib/prisma";
  * Triggered by RabbitMQ message: { projectId, jiraProjectKey, accessToken }
  */
 import { queueService, QUEUES } from "../shared/queues";
-import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {   PmIssuePriority } from "@prisma/client";
 
 
 
@@ -29,13 +29,13 @@ interface JiraIssue {
     };
 }
 
-function mapJiraStatus(status: string): PmIssueStatus {
+function mapJiraStatus(status: string): string {
     const s = status.toLowerCase();
-    if (s.includes("done") || s.includes("closed") || s.includes("resolved")) return PmIssueStatus.DONE;
-    if (s.includes("in progress") || s.includes("in-progress")) return PmIssueStatus.IN_PROGRESS;
-    if (s.includes("review")) return PmIssueStatus.IN_REVIEW;
-    if (s.includes("backlog")) return PmIssueStatus.BACKLOG;
-    return PmIssueStatus.TODO;
+    if (s.includes("done") || s.includes("closed") || s.includes("resolved")) return "DONE";
+    if (s.includes("in progress") || s.includes("in-progress")) return "IN_PROGRESS";
+    if (s.includes("review")) return "IN_REVIEW";
+    if (s.includes("backlog")) return "BACKLOG";
+    return "TODO";
 }
 
 function mapJiraPriority(priority: string): PmIssuePriority {

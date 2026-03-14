@@ -20,11 +20,16 @@ export function SprintPlannerModal({ projectId }: SprintPlannerModalProps) {
     const [open, setOpen] = useState(false);
 
     const { mutate: recommend, data: plan, isPending, reset } = trpc.pmSprints.recommendPlan.useMutation();
+    const createSprint = trpc.pmSprints.create.useMutation();
+    const moveIssues = trpc.pmSprints.moveIssues.useMutation();
+    const utils = trpc.useUtils();
 
     const handleOpenChange = (newOpen: boolean) => {
         setOpen(newOpen);
         if (!newOpen) {
             reset();
+            createSprint.reset();
+            moveIssues.reset();
         }
     };
 
@@ -102,7 +107,7 @@ export function SprintPlannerModal({ projectId }: SprintPlannerModalProps) {
                             <div className="space-y-3">
                                 <h4 className="font-medium text-sm">Recommended Issues ({plan.issues.length})</h4>
                                 <div className="space-y-2">
-                                    {plan.issues.map(issue => (
+                                    {plan.issues.map((issue: any) => (
                                         <div key={issue.id} className="flex items-center gap-3 p-3 border border-border rounded-md bg-card">
                                             <div className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border/50 uppercase text-muted-foreground flex-shrink-0">
                                                 {issue.key}
@@ -141,13 +146,35 @@ export function SprintPlannerModal({ projectId }: SprintPlannerModalProps) {
                         </button>
                         <button
                             type="button"
-                            onClick={() => {
-                                // Real implementation would trigger a mutation to update all issue states or create a Sprint entity
-                                alert("In reality, this would create a Sprint entity and assign these " + plan.issues.length + " issues to it.");
-                                handleOpenChange(false);
+                            disabled={createSprint.isPending || moveIssues.isPending}
+                            onClick={async () => {
+                                try {
+                                    const nextSprintNumber = Math.floor(Math.random() * 100) + 1; // Basic placeholder for sprint number
+                                    const newSprint = await createSprint.mutateAsync({
+                                        projectId,
+                                        name: `Sprint ${nextSprintNumber}`,
+                                        goal: "AI Recommended Sprint generated from backlog",
+                                        startDate: new Date(),
+                                        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days later
+                                    });
+                                    
+                                    await moveIssues.mutateAsync({
+                                        sprintId: newSprint.id,
+                                        issueIds: plan.issues.map((i: any) => i.id)
+                                    });
+
+                                    utils.pmIssues.listByProject.invalidate({ projectId });
+                                    utils.pmSprints.listByProject.invalidate({ projectId });
+                                    
+                                    handleOpenChange(false);
+                                } catch (e) {
+                                    console.error("Failed to enact sprint plan", e);
+                                    alert("Failed to enact sprint plan. Check console.");
+                                }
                             }}
-                            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md flex items-center gap-2 hover:bg-primary/90"
                         >
+                            {(createSprint.isPending || moveIssues.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
                             Accept Plan & Start Sprint
                         </button>
                     </div>

@@ -1,7 +1,7 @@
 import { prisma } from "../../../lib/prisma";
 import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 import { appRouter } from "../../../lib/trpc/server";
-import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {   PmIssuePriority } from "@prisma/client";
 
 
 
@@ -46,7 +46,7 @@ describe("PM Issues Router Integration", () => {
                 projectId: mockProjectId,
                 title: "Test Issue Creation",
                 description: "Testing TRPC mutation",
-                status: PmIssueStatus.TODO,
+                status: "TODO",
                 priority: PmIssuePriority.HIGH,
                 creatorId: "mock-test-creator"
             };
@@ -55,7 +55,7 @@ describe("PM Issues Router Integration", () => {
 
             expect(result).toBeDefined();
             expect(result.title).toBe(input.title);
-            expect(result.status).toBe(PmIssueStatus.TODO);
+            expect(result.status).toBe("TODO");
             expect(result.priority).toBe(PmIssuePriority.HIGH);
             expect(result.key).toMatch(/TEST-\d+-\d+/);
         });

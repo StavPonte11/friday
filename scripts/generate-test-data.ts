@@ -10,7 +10,7 @@ import prisma from "../lib/prisma";
 import { config } from "dotenv";
 config({ path: ".env" });
 
-import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {   PmIssuePriority } from "@prisma/client";
 
 
 
@@ -64,27 +64,27 @@ const PRIORITIES: PmIssuePriority[] = [
     PmIssuePriority.URGENT,
 ];
 
-const STATUSES: PmIssueStatus[] = [
-    PmIssueStatus.BACKLOG,
-    PmIssueStatus.TODO,
-    PmIssuePriority.NONE as unknown as PmIssueStatus, // placeholder fixed below
-    PmIssueStatus.IN_PROGRESS,
-    PmIssueStatus.IN_REVIEW,
-    PmIssueStatus.DONE,
-    PmIssueStatus.DONE,
-    PmIssueStatus.DONE,
+const STATUSES: string[] = [
+    "BACKLOG",
+    "TODO",
+    PmIssuePriority.NONE as unknown as  // placeholder fixed below
+    "IN_PROGRESS",
+    "IN_REVIEW",
+    "DONE",
+    "DONE",
+    "DONE",
 ];
 
-const ISSUE_STATUSES: PmIssueStatus[] = [
-    PmIssueStatus.BACKLOG,
-    PmIssueStatus.TODO,
-    PmIssueStatus.TODO,
-    PmIssueStatus.IN_PROGRESS,
-    PmIssueStatus.IN_REVIEW,
-    PmIssueStatus.DONE,
-    PmIssueStatus.DONE,
-    PmIssueStatus.DONE,
-    PmIssueStatus.CANCELED,
+const ISSUE_STATUSES: string[] = [
+    "BACKLOG",
+    "TODO",
+    "TODO",
+    "IN_PROGRESS",
+    "IN_REVIEW",
+    "DONE",
+    "DONE",
+    "DONE",
+    "CANCELED",
 ];
 
 function randomFrom<T>(arr: T[]): T {
@@ -188,8 +188,8 @@ async function main(): Promise<void> {
             const priority = randomFrom(PRIORITIES);
             const status = randomFrom(ISSUE_STATUSES);
             const creatorId = randomFrom(userIds);
-            const assigneeId = status !== PmIssueStatus.BACKLOG ? randomFrom(userIds) : null;
-            const sprintId = status === PmIssueStatus.BACKLOG ? null : randomFrom(sprintIds);
+            const assigneeId = status !== "BACKLOG" ? randomFrom(userIds) : null;
+            const sprintId = status === "BACKLOG" ? null : randomFrom(sprintIds);
 
             await prisma.pmIssue.upsert({
                 where: { key: issueKey },

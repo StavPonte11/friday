@@ -9,7 +9,7 @@ import prisma from "../lib/prisma";
 import { config } from "dotenv";
 config({ path: ".env" });
 
-import {  PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {   PmIssuePriority } from "@prisma/client";
 import { Langfuse } from "langfuse";
 
 
@@ -305,32 +305,32 @@ async function main(): Promise<void> {
 
             // Determine sprint assignment and status
             let sprintId: string | null = null;
-            let status: PmIssueStatus = PmIssueStatus.BACKLOG;
+            let status: string = "BACKLOG";
 
             if (counter <= 6) {
                 // Sprint 10 — all done
                 sprintId = sprintIds[0];
-                status = PmIssueStatus.DONE;
+                status = "DONE";
             } else if (counter <= 12) {
                 // Sprint 11 — mostly done, some canceled
                 sprintId = sprintIds[1];
-                status = counter === 12 ? PmIssueStatus.CANCELED : PmIssueStatus.DONE;
+                status = counter === 12 ? "CANCELED" : "DONE";
             } else if (counter <= 18) {
                 // Sprint 12 — done except 1 blocked
                 sprintId = sprintIds[2];
-                status = counter === 18 ? PmIssueStatus.IN_REVIEW : PmIssueStatus.DONE;
+                status = counter === 18 ? "IN_REVIEW" : "DONE";
             } else if (counter <= 24) {
                 // Sprint 13 (active) — various statuses
                 sprintId = sprintIds[3];
                 const roll = counter % 4;
-                status = roll === 0 ? PmIssueStatus.TODO : roll === 1 ? PmIssueStatus.IN_PROGRESS : roll === 2 ? PmIssueStatus.IN_REVIEW : PmIssueStatus.TODO;
+                status = roll === 0 ? "TODO" : roll === 1 ? "IN_PROGRESS" : roll === 2 ? "IN_REVIEW" : "TODO";
             } else {
                 // Backlog
                 sprintId = null;
-                status = PmIssueStatus.BACKLOG;
+                status = "BACKLOG";
             }
 
-            const assignee = status === PmIssueStatus.BACKLOG ? null : randomFrom(devUsers);
+            const assignee = status === "BACKLOG" ? null : randomFrom(devUsers);
 
             await prisma.pmIssue.upsert({
                 where: { key: issueKey },
@@ -372,7 +372,7 @@ async function main(): Promise<void> {
             });
 
             // Add a review comment on done issues
-            if (status === PmIssueStatus.DONE && assignee) {
+            if (status === "DONE" && assignee) {
                 const existingIssue = await prisma.pmIssue.findUnique({ where: { key: issueKey } });
                 if (existingIssue) {
                     const commentId = `comment-${issueKey}-done`;

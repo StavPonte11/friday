@@ -17,6 +17,8 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
+  ssoProvider   String?
+  ssoId         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -26,9 +28,14 @@ model User {
   auditLogs        AuditLog[]        @relation("UserAuditLogs")
 
   // PM Module opposite relations
-  assignedIssues PmIssue[]   @relation("IssueAssignee")
-  createdIssues  PmIssue[]   @relation("IssueCreator")
-  pmComments     PmComment[]
+  assignedIssues   PmIssue[]         @relation("IssueAssignee")
+  createdIssues    PmIssue[]         @relation("IssueCreator")
+  pmComments       PmComment[]
+  pmActivities     PmIssueActivity[]
+  pmProjectMembers PmProjectMember[]
+  pmAttachments    PmAttachment[]
+  pmNotifications  PmNotification[]
+  pmSavedViews     PmSavedView[]
 }
 
 model Session {
@@ -124,27 +131,45 @@ model AuditLog {
 // Module: PM Models
 // -----------------------------------------------------------------------------
 
+enum PmProjectRole {
+  PROJECT_ADMIN
+  TEAM_LEADER
+  DEVELOPER
+  VIEWER
+}
+
+model PmProjectMember {
+  id        String        @id @default(cuid())
+  projectId String
+  userId    String
+  role      PmProjectRole @default(DEVELOPER)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  project PmProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
 model PmProject {
   id          String   @id @default(cuid())
   workspaceId String
   key         String   @unique // e.g., FPM
   name        String
   description String?
+  workflow    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   issues    PmIssue[]
   sprints   PmSprint[]
-}
-
-enum PmIssueStatus {
-  BACKLOG
-  TODO
-  IN_PROGRESS
-  IN_REVIEW
-  DONE
-  CANCELED
+  labels    PmLabel[]
+  members   PmProjectMember[]
+  versions  PmVersion[]
+  webhooks  PmWebhook[]
+  savedViews PmSavedView[]
 }
 
 enum PmIssuePriority {
@@ -155,32 +180,66 @@ enum PmIssuePriority {
   URGENT
 }
 
-model PmIssue {
-  id          String          @id @default(cuid())
-  projectId   String
-  key         String          @unique // e.g., FPM-123
-  title       String
-  description String?
-  status      PmIssueStatus   @default(TODO)
-  priority    PmIssuePriority @default(NONE)
-  storyPoints Int?
-  complexityScore Int?
-  predictedTime   String?
+enum PmIssueType {
+  INITIATIVE
+  EPIC
+  STORY
+  TASK
+  SUBTASK
+}
 
+model PmIssue {
+  id               String          @id @default(cuid())
+  projectId        String
+  key              String          @unique // e.g., FPM-123
+  title            String
+  description      String?
+  status           String          @default("TODO")
+  priority         PmIssuePriority @default(NONE)
+  type             PmIssueType     @default(TASK)
+  storyPoints      Int?
+  complexityScore  Int?
+  predictedTime    String?
+  originalEstimate Int? // minutes
+  timeSpent        Int? // minutes
+  remainingTime    Int? // minutes
+  customFields     Json?
+
+  parentId   String?
   assigneeId String?
   creatorId  String
   sprintId   String?
+  versionId  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project  PmProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee User?     @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  creator  User      @relation("IssueCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  sprint   PmSprint? @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  project  PmProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent   PmIssue?   @relation("IssueToIssue", fields: [parentId], references: [id], onDelete: SetNull)
+  children PmIssue[]  @relation("IssueToIssue")
+  assignee User?      @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creator  User       @relation("IssueCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  sprint   PmSprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  version  PmVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
 
-  comments PmComment[]
-  labels   PmLabel[]   @relation("IssueLabels")
+  comments    PmComment[]
+  labels      PmLabel[]         @relation("IssueLabels")
+  activities  PmIssueActivity[]
+  attachments PmAttachment[]
+  gitlabLinks PmGitLabLink[]
+}
+
+model PmIssueActivity {
+  id        String   @id @default(cuid())
+  issueId   String
+  actorId   String
+  field     String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  actor User    @relation(fields: [actorId], references: [id], onDelete: Cascade)
 }
 
 model PmSprint {
@@ -199,24 +258,125 @@ model PmSprint {
 }
 
 model PmComment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   issueId   String
   authorId  String
   content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  parentId  String? // For threaded replies
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  issue  PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  author User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  issue    PmIssue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author   User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   PmComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies  PmComment[] @relation("CommentReplies")
+  mentions PmCommentMention[]
+}
+
+model PmCommentMention {
+  id        String    @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime  @default(now())
+
+  comment PmComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
 }
 
 model PmLabel {
   id          String   @id @default(cuid())
-  workspaceId String
+  workspaceId String?
+  projectId   String?
   name        String
   color       String   @default("#808080")
+  description String?
   createdAt   DateTime @default(now())
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  issues    PmIssue[] @relation("IssueLabels")
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   PmProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues    PmIssue[]  @relation("IssueLabels")
+}
+
+model PmAttachment {
+  id         String   @id @default(cuid())
+  issueId    String
+  uploaderId String
+  filename   String
+  url        String
+  size       Int // bytes
+  mimeType   String
+  createdAt  DateTime @default(now())
+
+  issue    PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  uploader User    @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+}
+
+model PmVersion {
+  id          String    @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  releaseDate DateTime?
+  released    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project PmProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  PmIssue[]
+}
+
+model PmNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // "issue_assigned" | "issue_updated" | "comment_added" | "mentioned"
+  title     String
+  payload   Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PmWebhook {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  url       String
+  events    Json // string[]
+  secret    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project PmProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model PmGitLabLink {
+  id             String   @id @default(cuid())
+  issueId        String
+  gitlabProjectId Int
+  gitlabIssueId  Int
+  gitlabUrl      String
+  synced         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, gitlabProjectId, gitlabIssueId])
+}
+
+model PmSavedView {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  name      String
+  filters   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project PmProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
