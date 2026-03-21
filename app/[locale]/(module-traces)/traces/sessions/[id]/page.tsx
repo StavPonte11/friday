@@ -19,17 +19,7 @@ export default function TraceDetailPage(props: { params: Promise<{ id: string }>
 
     const traces = data?.data || [];
 
-    // Flattening and processing LangFuse observations (mocking structure if traces array is empty or flat)
-    const mockWaterfall = [
-        { id: "1", name: "User Request", type: "event", startTime: 0, duration: 1200, depth: 0 },
-        { id: "2", name: "Auth Check", type: "span", startTime: 10, duration: 40, depth: 1, parent: "1" },
-        { id: "3", name: "DB Query User", type: "span", startTime: 50, duration: 200, depth: 2, parent: "2" },
-        { id: "4", name: "Prompt Injection", type: "generation", startTime: 300, duration: 50, depth: 1, parent: "1" },
-        { id: "5", name: "OpenAI GPT-4", type: "generation", startTime: 350, duration: 800, depth: 2, parent: "4", cost: 0.003, tokens: 154 },
-        { id: "6", name: "Response Shaping", type: "span", startTime: 1150, duration: 50, depth: 1, parent: "1" },
-    ];
-
-    const displayList = traces.length > 0 ? traces : mockWaterfall;
+    const displayList = traces;
 
     const getIcon = (type: string) => {
         switch (type) {

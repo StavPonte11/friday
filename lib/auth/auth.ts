@@ -16,14 +16,30 @@ export const authOptions: NextAuthOptions = {
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
-                // Basic mock authorize for phase 1.
-                // In reality we would hash check here against DB
                 if (credentials?.email === "admin@friday.local" && credentials?.password === "admin") {
-                    return { id: "1", name: "Admin", email: "admin@friday.local" };
+                    let user = await prisma.user.findUnique({ where: { email: "admin@friday.local" } });
+                    if (!user) {
+                        user = await prisma.user.create({ data: { name: "Admin", email: "admin@friday.local" } });
+                    }
+                    return user;
                 }
                 return null;
             }
         })
     ],
-    session: { strategy: "jwt" }
+    session: { strategy: "jwt" },
+    callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (session.user) {
+                (session.user as any).id = token.id;
+            }
+            return session;
+        }
+    }
 };

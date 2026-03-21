@@ -13,13 +13,10 @@ import {
     Loader2
 } from "lucide-react";
 
-interface WebhooksSettingsPageProps {
-    projectId: string;
-}
-
 type WebhookEvent = "issue.created" | "issue.updated" | "sprint.started" | "sprint.completed" | "comment.added";
 
-export default function WebhooksSettingsPage({ projectId }: WebhooksSettingsPageProps) {
+export default function WebhooksSettingsPage() {
+    const projectId = ""; // Provided by context or fallback in real app
     const [isAdding, setIsAdding] = useState(false);
     const [name, setName] = useState("");
     const [url, setUrl] = useState("");

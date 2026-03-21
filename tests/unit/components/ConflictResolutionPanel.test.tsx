@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import "@testing-library/jest-dom";
 import { ConflictResolutionPanel } from '@/components/prompts/conflict-resolution';
 import * as hooks from '@/hooks/use-prompts';
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { getTranslations } from "next-intl/server";
 import { Breadcrumbs } from "@/components/navigation/Breadcrumbs";
+import { CommandPalette } from "@/components/pm/CommandPalette";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
     const params = await props.params;
@@ -27,6 +28,7 @@ export default function PmLayout({
             <main className="flex-1 overflow-hidden relative">
                 {children}
             </main>
+            <CommandPalette />
         </div>
     );
 }

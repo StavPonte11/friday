@@ -18,7 +18,7 @@ export const pmProjectsRouter = router({
                 return getAccessibleProjects(input.userId, input.workspaceId);
             }
             // Fallback for unauthenticated dev usage – returns all
-            const whereClause = input?.workspaceId ? { workspaceId: input.workspaceId } : undefined;
+            const whereClause = input?.workspaceId ? { workspaceId: input.workspaceId, deletedAt: null } : { deletedAt: null };
             return prisma.pmProject.findMany({
                 where: whereClause,
                 include: { _count: { select: { issues: true, sprints: true } } },
@@ -52,10 +52,10 @@ export const pmProjectsRouter = router({
         }),
 
     get: publicProcedure
-        .input(z.object({ id: z.string() }))
+        .input(z.object({ id: z.string(), userId: z.string().optional() }))
         .query(async ({ input }) => {
-            return prisma.pmProject.findUnique({
-                where: { id: input.id },
+            const project = await prisma.pmProject.findUnique({
+                where: { id: input.id, deletedAt: null } as any,
                 include: {
                     sprints: { orderBy: { createdAt: "desc" } },
                     members: {
@@ -64,6 +64,28 @@ export const pmProjectsRouter = router({
                     versions: { orderBy: { releaseDate: "asc" } },
                 }
             });
+
+            if (project && input.userId) {
+                await (prisma as any).pmRecentView.upsert({
+                    where: {
+                        userId_entityType_entityId: {
+                            userId: input.userId,
+                            entityType: "project",
+                            entityId: input.id
+                        }
+                    },
+                    create: {
+                        userId: input.userId,
+                        entityType: "project",
+                        entityId: input.id
+                    },
+                    update: {
+                        viewedAt: new Date()
+                    }
+                }).catch(() => {});
+            }
+
+            return project;
         }),
 
     updateWorkflow: publicProcedure
@@ -76,6 +98,16 @@ export const pmProjectsRouter = router({
                 where: { id: input.id },
                 data: { workflow: input.workflow }
             });
+        }),
+
+    delete: publicProcedure
+        .input(z.object({ id: z.string(), actorId: z.string().optional() }))
+        .mutation(async ({ input }) => {
+            await prisma.pmProject.update({
+                where: { id: input.id },
+                data: { deletedAt: new Date(), deletedById: input.actorId } as any
+            });
+            return { success: true };
         }),
 
     addMember: publicProcedure

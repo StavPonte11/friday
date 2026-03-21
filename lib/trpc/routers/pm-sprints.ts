@@ -12,7 +12,7 @@ export const pmSprintsRouter = router({
         .input(z.object({ projectId: z.string() }))
         .query(async ({ input }) => {
             return prisma.pmSprint.findMany({
-                where: { projectId: input.projectId },
+                where: { projectId: input.projectId, deletedAt: null } as any,
                 orderBy: { startDate: 'asc' },
                 include: {
                     issues: true
@@ -24,7 +24,7 @@ export const pmSprintsRouter = router({
         .input(z.object({ id: z.string() }))
         .query(async ({ input }) => {
             return prisma.pmSprint.findUnique({
-                where: { id: input.id },
+                where: { id: input.id, deletedAt: null } as any,
                 include: {
                     issues: true
                 }
@@ -85,7 +85,7 @@ export const pmSprintsRouter = router({
         }),
 
     delete: publicProcedure
-        .input(z.object({ id: z.string() }))
+        .input(z.object({ id: z.string(), actorId: z.string().optional() }))
         .mutation(async ({ input }) => {
             // Unassign issues from sprint before deleting
             await prisma.pmIssue.updateMany({
@@ -93,8 +93,9 @@ export const pmSprintsRouter = router({
                 data: { sprintId: null }
             });
 
-            return prisma.pmSprint.delete({
-                where: { id: input.id }
+            return prisma.pmSprint.update({
+                where: { id: input.id },
+                data: { deletedAt: new Date(), deletedById: input.actorId } as any
             });
         }),
 
@@ -145,7 +146,7 @@ export const pmSprintsRouter = router({
 
                 // Return the populated issues along with reasoning
                 const recommendedIssues = await prisma.pmIssue.findMany({
-                    where: { id: { in: plan.recommendedIssueIds } },
+                    where: { id: { in: plan.recommendedIssueIds || [] } },
                     include: {
                         assignee: { select: { id: true, name: true, image: true } }
                     }

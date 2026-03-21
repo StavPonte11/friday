@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import "@testing-library/jest-dom";
 import { TraceTable } from '@/components/observability/trace-table';
 import * as hooks from '@/hooks/use-observability';
 
