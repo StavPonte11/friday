@@ -1,4 +1,3 @@
-import prisma from "../lib/prisma";
 /**
  * FRIDAY PM — Realistic Test Data Seed Script
  * Idempotent: safe to run multiple times. Uses upsert everywhere.
@@ -9,7 +8,9 @@ import prisma from "../lib/prisma";
 import { config } from "dotenv";
 config({ path: ".env" });
 
-import {   PmIssuePriority } from "@prisma/client";
+import prisma from "../lib/prisma";
+
+import { PmIssuePriority } from "@prisma/client";
 import { Langfuse } from "langfuse";
 
 
