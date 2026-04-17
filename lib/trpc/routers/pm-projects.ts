@@ -1,13 +1,10 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../init";
-import { PrismaClient } from "@prisma/client";
+import { router, publicProcedure, memberProcedure, adminProcedure } from "../init";
+import { prisma } from "@/lib/prisma";
+import { auditLog } from "@/lib/audit";
 
-const prisma = new PrismaClient();
-
-// Simplified public procedures for foundational phase.
-// In actual production, use privateProcedure with protected session/workspace context.
 export const pmProjectsRouter = router({
-    list: publicProcedure
+    list: memberProcedure
         .input(z.object({ workspaceId: z.string() }))
         .query(async ({ input }) => {
             return prisma.pmProject.findMany({
@@ -21,7 +18,7 @@ export const pmProjectsRouter = router({
             });
         }),
 
-    create: publicProcedure
+    create: adminProcedure
         .input(z.object({
             workspaceId: z.string(),
             name: z.string().min(1),
@@ -33,9 +30,19 @@ export const pmProjectsRouter = router({
             const existing = await prisma.pmProject.findUnique({ where: { key: input.key } });
             if (existing) throw new Error(`Project key ${input.key} already exists`);
 
-            return prisma.pmProject.create({
+            const project = await prisma.pmProject.create({
                 data: input
             });
+
+            await auditLog({
+                workspaceId: input.workspaceId,
+                action: "pm_project.created",
+                entityType: "PmProject",
+                entityId: project.id,
+                details: { name: project.name, key: project.key }
+            });
+
+            return project;
         }),
 
     get: publicProcedure

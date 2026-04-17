@@ -6,9 +6,7 @@
  * and DONE when PR is merged.
  */
 import { queueService, QUEUES } from "../shared/queues";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 interface GitHubSyncPayload {
     action: "opened" | "merged" | "closed";

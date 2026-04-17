@@ -4,9 +4,8 @@
  * Triggered by RabbitMQ message: { projectId, jiraProjectKey, accessToken }
  */
 import { queueService, QUEUES } from "../shared/queues";
-import { PrismaClient, PmIssueStatus, PmIssuePriority } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 interface JiraSyncPayload {
     projectId: string;        // Friday PM project ID

@@ -1,0 +1,31 @@
+---
+title: FRIDAY PM
+description: Advanced Issue Tracking and Collaboration
+---
+
+## Issue Management
+
+The heart of F.R.I.D.A.Y is the Project Management (PM) module, heavily inspired by modern workflows but infused with intelligence. Issues are managed inside **Projects**, and can be grouped into **Sprints**.
+
+### Sprints & Boards
+
+Our Kanban board is fully real-time. Moving an issue updates the state globally, syncing presence and firing a background worker to analyze cycle-time changes. The board supports multiple status columns, priority visualizers, and an interactive properties sidebar.
+
+<Callout type="tip">
+  Use `CMD+K` anywhere in the app to search for an issue by its semantic meaning. We use `pgvector` to turn your query into an embedding, matching you with the relevant project context instantly.
+</Callout>
+
+## Observability Dashboards
+
+We don't just track work; we analyze it.
+
+- **Gantt & Calendar:** Auto-rendered timelines based on issue due dates and sprint bounds.
+- **Insights Engine:** A dedicated local LLM runs against your sprint metrics (Velocity, Cycle Time, Throughput) to generate an actionable health report every day.
+- **Execution Graph:** See a topological mapping of issue dependencies (blocking, related-to).
+
+## Collaboration
+
+FRIDAY is multiplayer:
+1. **At-Mentions:** Tag `@colleague` in any comment to trigger an in-app notification.
+2. **Presence:** See exactly who is looking at the same issue or board as you via WebSockets (Supabase Realtime / Socket.io).
+3. **Unified Activity Feed:** See every issue creation, transition, and commit in a single stream.

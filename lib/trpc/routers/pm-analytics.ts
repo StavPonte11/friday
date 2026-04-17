@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../init";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { router, publicProcedure, protectedProcedure } from "../init";
+import { prisma } from "@/lib/prisma";
+import { getDailyActiveUsers, getFeatureUsage, getIssuesCreatedPerDay, generateInsights, trackEvent } from "../../analytics";
 
 export const pmAnalyticsRouter = router({
     /**
@@ -17,7 +16,7 @@ export const pmAnalyticsRouter = router({
             });
             if (!sprint || !sprint.startDate || !sprint.endDate) return [];
 
-            const totalPoints = sprint.issues.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0);
+            const totalPoints = sprint.issues.reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0);
             const startDate = new Date(sprint.startDate);
             const endDate = new Date(sprint.endDate);
             const days: { date: string; remaining: number; ideal: number }[] = [];
@@ -28,15 +27,15 @@ export const pmAnalyticsRouter = router({
 
             for (let d = 0; d <= totalDays; d++) {
                 const date = new Date(startDate.getTime() + d * msPerDay);
-                const dateStr = date.toISOString().split("T")[0];
+                const dateStr = date.toISOString().split("T")[0]!;
 
                 // Issues completed on this day
-                const completedToday = sprint.issues.filter((i: any) => {
+                const completedToday = sprint.issues.filter((i) => {
                     if (!i.updatedAt) return false;
                     const updated = new Date(i.updatedAt).toISOString().split("T")[0];
                     return updated === dateStr && i.status === "DONE";
                 });
-                remaining -= completedToday.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0);
+                remaining -= completedToday.reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0);
 
                 days.push({
                     date: dateStr,
@@ -60,12 +59,12 @@ export const pmAnalyticsRouter = router({
                 orderBy: { startDate: "asc" },
             });
 
-            return sprints.map((s: any) => ({
+            return sprints.map((s) => ({
                 sprint: s.name,
                 completed: s.issues
-                    .filter((i: any) => i.status === "DONE")
-                    .reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0),
-                committed: s.issues.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0),
+                    .filter((i) => i.status === "DONE")
+                    .reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0),
+                committed: s.issues.reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0),
             }));
         }),
 
@@ -89,10 +88,10 @@ export const pmAnalyticsRouter = router({
             for (let d = input.days; d >= 0; d--) {
                 const date = new Date();
                 date.setDate(date.getDate() - d);
-                const key = date.toISOString().split("T")[0];
+                const key = date.toISOString().split("T")[0]!;
                 result[key] = {};
                 for (const s of statuses) {
-                    result[key][s] = issues.filter((i: any) => {
+                    result[key][s] = issues.filter((i) => {
                         const created = new Date(i.createdAt) <= date;
                         return created && i.status === s;
                     }).length;
@@ -115,7 +114,7 @@ export const pmAnalyticsRouter = router({
                 take: 50,
             });
 
-            return issues.map((i: any) => ({
+            return issues.map((i) => ({
                 key: i.key,
                 title: i.title,
                 priority: i.priority,
@@ -148,4 +147,41 @@ export const pmAnalyticsRouter = router({
 
             return Object.values(byAssignee).sort((a, b) => b.points - a.points);
         }),
+
+    // MVP Analytics
+    
+    dailyActiveUsers: protectedProcedure
+        .input(z.object({ days: z.number().default(30) }).optional())
+        .query(async ({ input }) => {
+            return getDailyActiveUsers(input?.days);
+        }),
+        
+    featureUsage: protectedProcedure
+        .input(z.object({ days: z.number().default(30) }).optional())
+        .query(async ({ input }) => {
+            return getFeatureUsage(input?.days);
+        }),
+        
+    issuesCreatedPerDay: protectedProcedure
+        .input(z.object({ days: z.number().default(30) }).optional())
+        .query(async ({ input }) => {
+            return getIssuesCreatedPerDay(input?.days);
+        }),
+        
+    uxInsights: protectedProcedure
+        .query(async () => {
+            return generateInsights();
+        }),
+
+    trackEvent: publicProcedure
+        .input(z.object({ 
+            event: z.string(), 
+            properties: z.record(z.string(), z.any()).optional()
+        }))
+        .mutation(async ({ input }) => {
+            // Note: we're using a public endpoint for trackEvent to allow simple tracking from client,
+            // but we could make it protected if needed. Ideally we'd map it to AnalyticsEventName.
+            await trackEvent(input.event as any, (input.properties || {}) as Record<string, string | number | boolean | null>);
+            return { success: true };
+        })
 });

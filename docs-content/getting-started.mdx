@@ -1,0 +1,51 @@
+---
+title: Getting Started
+description: Set up FRIDAY locally in minutes
+---
+
+## 1. Prerequisites
+
+You will need the following installed:
+- Node.js > v18.0
+- Docker Desktop (for Postgres and RabbitMQ)
+- npm or pnpm
+
+## 2. Bootstrapping
+
+Clone the repository and set up the infrastructure:
+
+```bash
+git clone https://github.com/StartPonte11/friday.git
+cd friday
+npm install
+```
+
+<Callout type="info">
+  We use a `docker-compose.yml` to spin up Postgres equipped with the `pgvector` extension and a standard RabbitMQ instance.
+</Callout>
+
+```bash
+docker-compose up -d
+```
+
+## 3. Environment Variables
+
+Copy the example stub:
+
+```bash
+cp .env.example .env
+```
+
+Ensure `DATABASE_URL` maps to your local docker container, and provide your LLM API keys (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`).
+
+## 4. Run the Platform
+
+Apply the Prisma schema and run the dev server:
+
+```bash
+npx prisma generate
+npx prisma db push
+npm run dev
+```
+
+Visit `http://localhost:3000` to see the application running. Use `CMD+K` to open the Command Palette and navigate to the PM module to create your first project!

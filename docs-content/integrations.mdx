@@ -1,0 +1,21 @@
+---
+title: System Integrations
+description: Connecting FRIDAY to the outside world
+---
+
+## Background Workers
+
+FRIDAY's true power lies in its asynchronous processing. We utilize a robust RabbitMQ implementation via `QueueService` to handle integrations without blocking the main Next.js thread.
+
+### GitHub Integration
+The `github-sync.worker.ts` listens for incoming webhooks (Push, PR opened, Review submitted). When an event occurs, the worker parses the commit message for issue IDs (e.g., `Fixes #42`) and automatically transitions the corresponding FRIDAY issue on the PM board.
+
+### Email Integration
+The `EmailSyncWorker` processes a unified inbox natively within the enterprise. Emails sent to `project-XYZ@friday.internal` are ingested, creating an issue with the sender attributed automatically, linking directly back to the original email thread.
+
+### Calendar Integration
+The `CalendarSyncWorker` monitors your team's Google/Outlook calendars, reflecting Gantt milestones as calendar events. When a sprint is delayed in FRIDAY, the events shift automatically.
+
+<Callout type="warning">
+  Ensure your `RABBITMQ_URL` is configured in `.env`. Without a running broker, webhook events will fail to process.
+</Callout>

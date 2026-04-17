@@ -3,6 +3,8 @@ import '../globals.css';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { AppProviders } from '@/components/providers/app-providers';
+import { FeedbackWidget } from '@/components/pm/FeedbackWidget';
+import { CommandPalette } from '@/components/shell/CommandPalette';
 
 export const metadata = {
   title: 'Friday - Engineering Portal',
@@ -25,6 +27,8 @@ export default async function LocaleLayout(props: {
         <NextIntlClientProvider messages={messages}>
           <AppProviders>
             {children}
+            <FeedbackWidget />
+            <CommandPalette />
           </AppProviders>
         </NextIntlClientProvider>
       </body>

@@ -1,0 +1,37 @@
+---
+title: Agents & MCP
+description: The Model Context Protocol implementation
+---
+
+## What are FRIDAY Agents?
+
+In traditional systems, you run scripts manually. In FRIDAY, you talk to Agents. An Agent is an LLM wrapper paired with a defined set of tools via the **Model Context Protocol (MCP)**.
+
+## The ReAct Loop
+
+Our agents use the Reason-Act loop:
+
+1. **Reason:** The LLM reads your command (e.g. "Move all delayed tasks to the backlog").
+2. **Act:** It identifies an MCP tool (`moveIssue`), prepares arguments, and fires the function.
+3. **Observe:** The result of the `moveIssue` function is fed back to the LLM. It repeats until the goal is achieved.
+
+<Callout type="tip">
+  You can build Custom MCP Servers. If you have an internal proprietary database, write a lightweight Node.js script exposing `queryDB` via MCP, and FRIDAY Agents instantly know how to write SQL for your infra.
+</Callout>
+
+## The Agent Command Bar
+
+Visible in the global shell `layout.tsx`, the Agent Command Bar is a floating FAB that lets you converse contextually. If you are viewing Project X, the agent injects Project X's metadata into its system prompt automatically.
+
+```ts
+// Example: Registering a custom MCP tool
+import { MCP } from "@friday/mcp-core";
+
+MCP.registerTool({
+  name: "summarizePR",
+  description: "Reads a PR and returns a summary",
+  execute: async (prId: string) => {
+    // your logic
+  }
+});
+```

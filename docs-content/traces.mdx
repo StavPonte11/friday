@@ -1,0 +1,26 @@
+---
+title: FRIDAY Traces
+description: Deep observability for LLMs and Agents
+---
+
+## Why Traces?
+
+Building agents without observability is like flying blind. If an agent loops infinitely, hallucinates a response, or incorrectly maps a tool argument, you need to know *exactly* what prompted the error.
+
+FRIDAY Traces is our answer: a built-in telemetry module utilizing Langfuse.
+
+<Callout type="important">
+  Trace data is inherently noisy. We optimize storage by only logging complete ReAct loop iterations and discarding intermediate embeddings unless specifically flagged for debugging.
+</Callout>
+
+## Working with Traces
+
+Whenever the FAB (Floating Action Button) Agent is invoked via the Command Bar, a Trace ID is generated. 
+
+1. **Spans:** The trace is broken down into spans: `Planning`, `Tool Selection`, `Execution`, `Observation`.
+2. **Generations:** Any LLM payload is logged under a generation metric, including prompt tokens, completion tokens, and total latency.
+3. **Trace Dashboard:** Accessible via `/traces`, this dashboard gives team leads a macro-view of AI expenditure and error rates.
+
+## Integrating Custom Agents
+
+You can bind your own custom background workers to the trace framework. Ensure your environment has `LANGFUSE_PUBLIC_KEY` exported, and simply wrap your functional calls with the `@friday/traces` decorator.

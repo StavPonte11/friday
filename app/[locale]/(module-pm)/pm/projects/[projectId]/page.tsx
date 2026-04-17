@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc/client";
 import { ArrowLeft, LayoutDashboard, ListTodo, Activity } from "lucide-react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
+import { AgentCommandBar } from "@/components/pm/AgentCommandBar";
 
 export default function ProjectDetailsPage(props: { params: Promise<{ locale: string, projectId: string }> }) {
     const { locale, projectId } = use(props.params);
@@ -79,9 +80,12 @@ export default function ProjectDetailsPage(props: { params: Promise<{ locale: st
                         <Activity size={24} />
                     </div>
                     <h3 className="font-semibold text-lg mb-2">Sprint Analytics</h3>
-                    <p className="text-sm text-muted-foreground">Analyze sprint health, velocity, and AI-driven insights.</p>
+                    <p className="text-sm text-muted-foreground">Analyse sprint health, velocity, and AI-driven insights.</p>
                 </Link>
             </div>
+
+            {/* F.R.I.D.A.Y Agent Command Bar */}
+            <AgentCommandBar projectId={projectId} />
         </div>
     );
 }

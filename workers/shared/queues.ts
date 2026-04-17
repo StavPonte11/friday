@@ -8,6 +8,8 @@ export const QUEUES = {
     GITHUB_SYNC: "friday.pm.github.sync",
     RISK_DETECTION: "friday.pm.ai.risk-detection",
     NOTIFICATIONS: "friday.pm.notifications",
+    EMAIL_SYNC: "friday.pm.email.sync",
+    CALENDAR_SYNC: "friday.pm.calendar.sync",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];

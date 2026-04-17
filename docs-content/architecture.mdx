@@ -1,0 +1,33 @@
+---
+title: Platform Architecture
+description: Under the hood of F.R.I.D.A.Y
+---
+
+## Tech Stack
+
+FRIDAY is built for performance, security, and developer ergonomics.
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4 + Framer Motion (for presence animations)
+- **API:** tRPC deployed as edge/serverless functions
+- **Database:** PostgreSQL (via Prisma) with the `pgvector` extension
+- **Workers:** RabbitMQ with Node.js background consumers
+
+## Architectural Layers
+
+<Callout type="info">
+  The system is designed hierarchically. The presentation layer never talks to the intelligence layer directly without passing through tRPC and proper RBAC boundaries.
+</Callout>
+
+### 1. Presentation
+The UI is composed of isolated layout groups: `(module-pm)`, `(module-traces)`, `(module-docs)`. This prevents complex nested layouts from clashing and keeps bundles lean per module.
+
+### 2. tRPC API
+The `appRouter` inside `/lib/trpc/server.ts` combines all sub-routers (`pmProjectsRouter`, `pmSearchRouter`, `activityFeedRouter`). 
+
+### 3. Intelligence Layer
+We abstract our AI calls through `lib/ai`. The `AIProviderSelector` handles routing requests to GPT-4, Claude, or a local Ollama instance depending on project configuration.
+
+### 4. Background Workers
+Heavy tasks like email parsing and GitHub webhook ingestion are pushed via `QueueService` to a RabbitMQ cluster. Workers (`EmailSyncWorker`, `CalendarSyncWorker`) consume these queues and modify the Prisma DB seamlessly.
