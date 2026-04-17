@@ -7,7 +7,7 @@ export const pmVersionsRouter = router({
         .input(z.object({ projectId: z.string() }))
         .query(async ({ input }) => {
             return prisma.pmVersion.findMany({
-                where: { projectId: input.projectId },
+                where: { projectId: input.projectId, deletedAt: null } as any,
                 orderBy: { releaseDate: "asc" }
             });
         }),
@@ -43,9 +43,12 @@ export const pmVersionsRouter = router({
         }),
 
     delete: publicProcedure
-        .input(z.object({ id: z.string() }))
+        .input(z.object({ id: z.string(), actorId: z.string().optional() }))
         .mutation(async ({ input }) => {
-            await prisma.pmVersion.delete({ where: { id: input.id } });
+            await prisma.pmVersion.update({ 
+                where: { id: input.id },
+                data: { deletedAt: new Date(), deletedById: input.actorId } as any
+            });
             return { success: true };
         }),
 });

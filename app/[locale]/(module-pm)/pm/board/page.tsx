@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import { DndContext, DragEndEvent, DragStartEvent, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useLocale } from "next-intl";
 import { useEffect, useState } from "react";
@@ -13,23 +13,28 @@ import { IssueEditor } from "@/components/issues/IssueEditor";
 import { useSession } from "next-auth/react";
 
 const DEFAULT_COLUMNS = [
-    { id: "TODO", title: "To Do" },
-    { id: "IN_PROGRESS", title: "In Progress" },
-    { id: "IN_REVIEW", title: "In Review" },
-    { id: "DONE", title: "Done" }
+    { id: "TODO", title: "To Do", wipLimit: null },
+    { id: "IN_PROGRESS", title: "In Progress", wipLimit: 3 },
+    { id: "IN_REVIEW", title: "In Review", wipLimit: 2 },
+    { id: "DONE", title: "Done", wipLimit: null }
 ];
 
 let socket: ReturnType<typeof io> | undefined;
 
-function BoardColumn({ id, title, children, count }: { id: string, title: string, children: React.ReactNode, count: number }) {
+function BoardColumn({ id, title, children, count, wipLimit }: { id: string, title: string, children: React.ReactNode, count: number, wipLimit?: number | null }) {
     const { setNodeRef } = useDroppable({ id });
+    const isOverWip = wipLimit != null && count > wipLimit;
+
     return (
-        <div ref={setNodeRef} className="w-80 flex-shrink-0 flex flex-col bg-muted/40 rounded-xl" id={id}>
+        <div ref={setNodeRef} className={`w-80 flex-shrink-0 flex flex-col bg-muted/40 rounded-xl border-2 transition-colors ${isOverWip ? 'border-orange-500/50' : 'border-transparent'}`} id={id}>
             <div className="flex items-center justify-between p-4 border-b border-border">
                 <h3 className="font-semibold text-sm">{title}</h3>
-                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
-                    {count}
-                </span>
+                <div className="flex items-center gap-2">
+                    {isOverWip && <span className="text-[10px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">WIP Exceeded</span>}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isOverWip ? 'bg-orange-500/20 text-orange-500' : 'bg-muted text-muted-foreground'}`}>
+                        {count} {wipLimit ? `/ ${wipLimit}` : ''}
+                    </span>
+                </div>
             </div>
             <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-[300px]">
                 {children}
@@ -198,6 +203,7 @@ export default function KanbanBoardPage() {
                             key={column.id} 
                             id={column.id} 
                             title={column.title} 
+                            wipLimit={column.wipLimit}
                             count={issues.filter((i: any) => i.status === column.id).length}
                         >
                             {/* Render cards using Draggable component */}
@@ -211,6 +217,9 @@ export default function KanbanBoardPage() {
                         </BoardColumn>
                     ))}
                 </div>
+                <DragOverlay>
+                    {activeIssue ? <BoardCard issue={activeIssue} onClick={() => {}} /> : null}
+                </DragOverlay>
             </DndContext>
 
             <Dialog open={!!selectedIssueIdForEdit} onOpenChange={(open) => !open && setSelectedIssueIdForEdit(null)}>

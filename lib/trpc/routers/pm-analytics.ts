@@ -181,4 +181,31 @@ export const pmAnalyticsRouter = router({
                 addedAfterStart
             };
         }),
+
+    /**
+     * Project Report Stats for AI Report Generation
+     */
+    projectReportStats: publicProcedure
+        .input(z.object({ projectId: z.string() }))
+        .query(async ({ input }) => {
+            const issues = await prisma.pmIssue.findMany({
+                where: { projectId: input.projectId }
+            });
+
+            const committed = issues.reduce((sum: number, i: any) => sum + (i.storyPoints || 0), 0);
+            const completedIssues = issues.filter((i: any) => i.status === "DONE");
+            const completed = completedIssues.reduce((sum: number, i: any) => sum + (i.storyPoints || 0), 0);
+            const openIssues = issues.filter((i: any) => i.status !== "DONE").length;
+            const blockedIssues = issues.filter((i: any) => i.status === "BLOCKER" || i.priority === "CRITICAL").length;
+            
+            // Calculate real cycle time for done issues
+            let totalCycleDays = 0;
+            completedIssues.forEach((i: any) => {
+                const days = (new Date(i.updatedAt).getTime() - new Date(i.createdAt).getTime()) / 86400000;
+                totalCycleDays += days;
+            });
+            const avgCycleDays = completedIssues.length > 0 ? parseFloat((totalCycleDays / completedIssues.length).toFixed(1)) : 0;
+
+            return { committed, completed, openIssues, blockedIssues, avgCycleDays };
+        }),
 });

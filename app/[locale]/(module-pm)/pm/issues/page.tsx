@@ -41,10 +41,15 @@ export default function IssuesPage() {
         }
     }, [projects, selectedProjectId]);
 
-    const { data: issues, isLoading, refetch } = trpc.pmIssues.listByProject.useQuery(
-        filters,
-        { enabled: !!filters.projectId }
+    const { data: infiniteData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = trpc.pmIssues.listInfiniteByProject.useInfiniteQuery(
+        { ...filters, take: 20 },
+        { 
+            enabled: !!filters.projectId,
+            getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+        }
     );
+
+    const issues = infiniteData?.pages.flatMap((page: any) => page.items) || [];
 
     const toggleSelection = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -144,6 +149,18 @@ export default function IssuesPage() {
                                 </div>
                             </div>
                         ))}
+
+                        {hasNextPage && (
+                            <div className="flex justify-center pt-4 pb-4">
+                                <button 
+                                    onClick={() => fetchNextPage()} 
+                                    disabled={isFetchingNextPage}
+                                    className="px-6 py-2 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 disabled:opacity-50"
+                                >
+                                    {isFetchingNextPage ? "Loading more..." : "Load More"}
+                                </button>
+                            </div>
+                        )}
 
                         {issues?.length === 0 && (
                             <div className="flex flex-col items-center justify-center h-48 border border-dashed border-border rounded-lg text-muted-foreground text-sm">

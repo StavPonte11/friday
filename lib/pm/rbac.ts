@@ -97,7 +97,7 @@ export async function getAccessibleProjects(userId: string, workspaceId?: string
 
     if (wsAdmin) {
         return prisma.pmProject.findMany({
-            where: { ...workspaceQuery },
+            where: { ...workspaceQuery, deletedAt: null },
             include: { _count: { select: { issues: true, sprints: true } } },
             orderBy: { updatedAt: "desc" }
         });
@@ -107,6 +107,7 @@ export async function getAccessibleProjects(userId: string, workspaceId?: string
     return prisma.pmProject.findMany({
         where: {
             ...workspaceQuery,
+            deletedAt: null,
             members: { some: { userId } }
         },
         include: { _count: { select: { issues: true, sprints: true } } },

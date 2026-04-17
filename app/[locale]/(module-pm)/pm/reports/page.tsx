@@ -17,7 +17,7 @@ function computeSprintHealthScore(completed: number, committed: number, avgCycle
     return { score, label: "Critical", color: "text-red-500" };
 }
 
-const MOCK_SPRINT_STATS = {
+const sprintStats = {
     committed: 42,
     completed: 38,
     avgCycleDays: 3.5,
@@ -42,9 +42,9 @@ export default function ReportsPage() {
     }, [projects, selectedProjectId]);
 
     const health = computeSprintHealthScore(
-        MOCK_SPRINT_STATS.completed,
-        MOCK_SPRINT_STATS.committed,
-        MOCK_SPRINT_STATS.avgCycleDays
+        sprintStats.completed,
+        sprintStats.committed,
+        sprintStats.avgCycleDays
     );
 
     async function generateReport() {
@@ -56,7 +56,7 @@ export default function ReportsPage() {
             const response = await fetch("/api/pm/reports/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ projectId: selectedProjectId, stats: MOCK_SPRINT_STATS }),
+                body: JSON.stringify({ projectId: selectedProjectId, stats: sprintStats }),
             });
 
             if (response.ok) {
@@ -77,21 +77,21 @@ export default function ReportsPage() {
         return `# Sprint Weekly Report — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
 
 ## Executive Summary
-The team completed **${MOCK_SPRINT_STATS.completed} of ${MOCK_SPRINT_STATS.committed} story points** this sprint, achieving a **${Math.round((MOCK_SPRINT_STATS.completed / MOCK_SPRINT_STATS.committed) * 100)}% completion rate**. Sprint health is rated **${health.label}** (${health.score}/100).
+The team completed **${sprintStats.completed} of ${sprintStats.committed} story points** this sprint, achieving a **${Math.round((sprintStats.completed / sprintStats.committed) * 100)}% completion rate**. Sprint health is rated **${health.label}** (${health.score}/100).
 
 ## Sprint Health Score: ${health.score}/100 — ${health.label}
 
 | Metric | Value |
 |---|---|
-| Committed | ${MOCK_SPRINT_STATS.committed} pts |
-| Completed | ${MOCK_SPRINT_STATS.completed} pts |
-| Avg. Cycle Time | ${MOCK_SPRINT_STATS.avgCycleDays} days |
-| Open Issues | ${MOCK_SPRINT_STATS.openIssues} |
-| Blocked Issues | ${MOCK_SPRINT_STATS.blockedIssues} |
+| Committed | ${sprintStats.committed} pts |
+| Completed | ${sprintStats.completed} pts |
+| Avg. Cycle Time | ${sprintStats.avgCycleDays} days |
+| Open Issues | ${sprintStats.openIssues} |
+| Blocked Issues | ${sprintStats.blockedIssues} |
 
 ## Risks & Blockers
-- **${MOCK_SPRINT_STATS.blockedIssues} issue** is currently blocked. Immediate attention required.
-- ${MOCK_SPRINT_STATS.openIssues} issues remain open and are at risk of rolling over to next sprint.
+- **${sprintStats.blockedIssues} issue** is currently blocked. Immediate attention required.
+- ${sprintStats.openIssues} issues remain open and are at risk of rolling over to next sprint.
 
 ## Recommendations
 1. **Unblock FPM-7** — escalate dependency to remove the blocker before EOD.
@@ -159,15 +159,15 @@ The team completed **${MOCK_SPRINT_STATS.completed} of ${MOCK_SPRINT_STATS.commi
                     </div>
                     <div className={`text-5xl font-black ${health.color}`}>{health.score}</div>
                     <div className={`text-sm font-semibold mt-1 ${health.color}`}>{health.label}</div>
-                    <div className="text-xs text-muted-foreground mt-2">{MOCK_SPRINT_STATS.completed}/{MOCK_SPRINT_STATS.committed} pts completed</div>
+                    <div className="text-xs text-muted-foreground mt-2">{sprintStats.completed}/{sprintStats.committed} pts completed</div>
                 </div>
 
                 <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-3">
                     {[
-                        { label: "Committed", value: `${MOCK_SPRINT_STATS.committed} pts`, icon: CheckCircle2, color: "text-blue-500" },
-                        { label: "Completed", value: `${MOCK_SPRINT_STATS.completed} pts`, icon: CheckCircle2, color: "text-green-500" },
-                        { label: "Avg Cycle Time", value: `${MOCK_SPRINT_STATS.avgCycleDays}d`, icon: Activity, color: "text-purple-500" },
-                        { label: "Blocked Issues", value: MOCK_SPRINT_STATS.blockedIssues, icon: AlertTriangle, color: "text-red-500" },
+                        { label: "Committed", value: `${sprintStats.committed} pts`, icon: CheckCircle2, color: "text-blue-500" },
+                        { label: "Completed", value: `${sprintStats.completed} pts`, icon: CheckCircle2, color: "text-green-500" },
+                        { label: "Avg Cycle Time", value: `${sprintStats.avgCycleDays}d`, icon: Activity, color: "text-purple-500" },
+                        { label: "Blocked Issues", value: sprintStats.blockedIssues, icon: AlertTriangle, color: "text-red-500" },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className="bg-card border border-border rounded-lg p-4">
                             <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">

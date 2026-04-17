@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import {
     Select,
     SelectContent,
@@ -66,11 +67,56 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
     const [open, setOpen] = useState(false);
     const utils = trpc.useUtils();
 
+    // Listen for global command to open modal
+    React.useEffect(() => {
+        const handleOpen = () => setOpen(true);
+        window.addEventListener("pm:create-issue", handleOpen);
+        return () => window.removeEventListener("pm:create-issue", handleOpen);
+    }, []);
+
     // Fetch members for assignee dropdown
     const { data: members, isLoading: isMembersLoading } = trpc.workspaces.members.useQuery(
         { workspaceId },
         { enabled: !!workspaceId && open }
     );
+
+    const [checklistItems, setChecklistItems] = useState<string[]>([]);
+
+    const TEMPLATES = [
+        {
+            id: "bug",
+            name: "Bug Template",
+            title: "[BUG] ",
+            priority: "HIGH",
+            description: "### Steps to Reproduce\n1. \n2. \n3. \n\n### Expected Behavior\n\n\n### Actual Behavior\n\n\n",
+            checklists: ["Verify locally", "Add regression test", "Deploy fix"]
+        },
+        {
+            id: "feature",
+            name: "Feature Template",
+            title: "[FEATURE] ",
+            priority: "MEDIUM",
+            description: "### User Story\nAs a [role], I want to [action] so that [benefit].\n\n### Acceptance Criteria\n- \n- \n",
+            checklists: ["Write unit tests", "Update documentation", "Review with PM"]
+        },
+        {
+            id: "infra",
+            name: "Infra Template",
+            title: "[INFRA] ",
+            priority: "HIGH",
+            description: "### Objective\n\n\n### Rollout Plan\n\n\n### Rollback Plan\n\n\n",
+            checklists: ["Check staging environments", "Monitor APM after deploy", "Alert on-call"]
+        }
+    ];
+
+    const applyTemplate = (templateId: string) => {
+        const t = TEMPLATES.find(x => x.id === templateId);
+        if (!t) return;
+        (form.setValue as any)("title", t.title);
+        (form.setValue as any)("description", t.description);
+        (form.setValue as any)("priority", t.priority);
+        setChecklistItems(t.checklists);
+    };
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -164,13 +210,14 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
     });
 
     function onSubmit(values: z.infer<typeof formSchema>) {
-        const userId = (session?.user as any)?.id || "mock-creator-id";
+        const userId = (session?.user as any)?.id || "";
         
         createMutation.mutate({
             ...values,
             projectId,
             creatorId: userId,
             assigneeId: values.assigneeId === "unassigned" ? null : (values.assigneeId || null),
+            checklistItems: checklistItems.length > 0 ? checklistItems : undefined,
         });
     }
 
@@ -192,25 +239,46 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
                         {/* AI Auto-Generate Widget */}
-                        <div className="p-3 border rounded-md bg-muted/50 space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                                <Sparkles size={16} /> Auto-Generate with AI
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 border rounded-md bg-muted/50 space-y-2">
+                                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                                    <Sparkles size={16} /> Auto-Generate with AI
+                                </div>
+                                <div className="flex gap-2">
+                                    <Textarea
+                                        placeholder="Briefly describe the issue... (e.g. 'Add a login page')"
+                                        value={aiPrompt}
+                                        onChange={(e) => setAiPrompt(e.target.value)}
+                                        className="h-10 resize-none text-xs"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => generateMutation.mutate({ prompt: aiPrompt })}
+                                        disabled={!aiPrompt || generateMutation.isPending}
+                                        className="px-3 bg-secondary text-secondary-foreground rounded-md text-xs font-semibold hover:bg-secondary/80 disabled:opacity-50 min-w-[80px]"
+                                    >
+                                        {generateMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : "Generate"}
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Textarea
-                                    placeholder="Briefly describe the issue... (e.g. 'Add a login page via OAuth')"
-                                    value={aiPrompt}
-                                    onChange={(e) => setAiPrompt(e.target.value)}
-                                    className="min-h-[60px] resize-none"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => generateMutation.mutate({ prompt: aiPrompt })}
-                                    disabled={!aiPrompt || generateMutation.isPending}
-                                    className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm hover:bg-secondary/80 disabled:opacity-50 flex items-center justify-center min-w-[100px]"
-                                >
-                                    {generateMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : "Generate"}
-                                </button>
+
+                            {/* Templates Widget */}
+                            <div className="p-3 border rounded-md bg-muted/20 space-y-2">
+                                <div className="flex items-center gap-2 text-sm font-medium">
+                                    Template Setup
+                                </div>
+                                <div>
+                                    <Select onValueChange={applyTemplate}>
+                                        <SelectTrigger className="w-full text-xs h-10">
+                                            <SelectValue placeholder="Choose a structured template" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {TEMPLATES.map(t => (
+                                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
 
@@ -235,10 +303,11 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                                 <FormItem>
                                     <FormLabel>Description</FormLabel>
                                     <FormControl>
-                                        <Textarea
+                                        <RichTextEditor
+                                            value={field.value || ""}
+                                            onChange={field.onChange}
                                             placeholder="Provide acceptance criteria and context..."
-                                            className="min-h-[100px]"
-                                            {...field}
+                                            minHeight="min-h-[100px]"
                                         />
                                     </FormControl>
                                     <FormMessage />
