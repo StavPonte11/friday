@@ -1,3 +1,4 @@
+import {prisma} from "../../lib/prisma";
 /**
  * GitHub Sync Worker
  * Listens on RabbitMQ for `friday.pm.github.sync` messages.
@@ -6,7 +7,9 @@
  * and DONE when PR is merged.
  */
 import { queueService, QUEUES } from "../shared/queues";
-import { prisma } from "@/lib/prisma";
+
+
+
 
 interface GitHubSyncPayload {
     action: "opened" | "merged" | "closed";

@@ -1,14 +1,18 @@
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { appRouter } from '@/lib/trpc/server';
 import { NextRequest } from 'next/server';
-import { createTRPCContext } from '@/lib/trpc/init';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/auth';
 
-const handler = (req: NextRequest) =>
-    fetchRequestHandler({
+const handler = async (req: NextRequest) => {
+    const session = await getServerSession(authOptions);
+    
+    return fetchRequestHandler({
         endpoint: '/api/trpc',
         req,
         router: appRouter,
-        createContext: () => createTRPCContext(),
+        createContext: () => ({ session }),
     });
+};
 
 export { handler as GET, handler as POST };

@@ -1,8 +1,9 @@
+import prisma from "../../lib/prisma";
 import { config } from "dotenv";
 config({ path: "../../.env" });
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+
+
 
 async function main() {
     console.log("🌱 Seeding database...");

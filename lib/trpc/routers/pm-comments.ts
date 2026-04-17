@@ -1,114 +1,190 @@
 import { z } from "zod";
-import { router, protectedProcedure, publicProcedure } from "../init";
+import { router, publicProcedure } from "../init";
 import { prisma } from "@/lib/prisma";
-import { trackEvent } from "../../analytics";
-import { auditLog } from "@/lib/audit";
-
-function extractMentions(text: string) {
-    const mentions = text.match(/@(\w+)/g) || [];
-    return mentions.map(m => m.slice(1));
-}
+import {
+    notify,
+    notifyMany,
+    extractMentions,
+    resolveMentions
+} from "@/lib/pm/notification-service";
 
 export const pmCommentsRouter = router({
-  list: publicProcedure
-    .input(z.object({ issueId: z.string() }))
-    .query(async ({ input }) => {
-      // Get all top level comments + replies
-      return prisma.pmComment.findMany({
-        where: { issueId: input.issueId, parentId: null },
-        include: {
-          author: { select: { id: true, name: true, image: true } },
-          reactions: { include: { user: { select: { id: true, name: true } } } },
-          replies: {
-              include: {
-                  author: { select: { id: true, name: true, image: true } },
-                  reactions: { include: { user: { select: { id: true, name: true } } } }
-              },
-              orderBy: { createdAt: 'asc' }
-          }
-        },
-        orderBy: [
-            { isPinned: 'desc' },
-            { createdAt: 'asc' }
-        ]
-      });
-    }),
-
-  create: protectedProcedure
-    .input(z.object({
-        issueId: z.string(),
-        content: z.string().min(1),
-        parentId: z.string().optional()
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
-      const comment = await prisma.pmComment.create({
-          data: {
-              issueId: input.issueId,
-              content: input.content,
-              authorId: userId,
-              parentId: input.parentId ?? null
-          },
-          include: { issue: { include: { project: true } } }
-      });
-      
-      const mentionedUsernames = extractMentions(input.content);
-      
-      await auditLog({
-          workspaceId: comment.issue.project.workspaceId,
-          userId,
-          action: "pm_comment.created",
-          entityType: "PmComment",
-          entityId: comment.id,
-          details: { issueId: input.issueId, hasMention: mentionedUsernames.length > 0 }
-      });
-      
-      await trackEvent("pm.comment.add", { 
-          userId, 
-          issueId: input.issueId, 
-          hasMention: mentionedUsernames.length > 0 
-      });
-      return comment;
-    }),
-
-  react: protectedProcedure
-    .input(z.object({ commentId: z.string(), emoji: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-        const userId = ctx.session.user.id;
-        const existing = await prisma.pmReaction.findUnique({
-            where: { commentId_userId_emoji: { commentId: input.commentId, userId, emoji: input.emoji } }
-        });
-        
-        if (existing) {
-            await prisma.pmReaction.delete({ where: { id: existing.id } });
-            return { action: 'removed' };
-        } else {
-            await prisma.pmReaction.create({
-                data: { commentId: input.commentId, userId, emoji: input.emoji }
+    /**
+     * List comments for an issue (with threaded replies nested).
+     */
+    list: publicProcedure
+        .input(z.object({ issueId: z.string() }))
+        .query(async ({ input }) => {
+            return prisma.pmComment.findMany({
+                where: {
+                    issueId: input.issueId,
+                    parentId: null,
+                    deletedAt: null
+                } as any,
+                include: {
+                    author: { select: { id: true, name: true, image: true, email: true } },
+                    mentions: true,
+                    replies: {
+                        include: {
+                            author: { select: { id: true, name: true, image: true, email: true } },
+                            mentions: true,
+                        },
+                        orderBy: { createdAt: "asc" }
+                    }
+                },
+                orderBy: { createdAt: "asc" }
             });
-            await trackEvent("pm.comment.react", { userId, commentId: input.commentId });
-            return { action: 'added' };
-        }
-    }),
+        }),
 
-  pin: protectedProcedure
-    .input(z.object({ commentId: z.string(), isPinned: z.boolean() }))
-    .mutation(async ({ ctx, input }) => {
-        const comment = await prisma.pmComment.update({
-            where: { id: input.commentId },
-            data: { isPinned: input.isPinned },
-            include: { issue: { include: { project: true } } }
-        });
-        
-        await auditLog({
-            workspaceId: comment.issue.project.workspaceId,
-            userId: ctx.session.user.id,
-            action: input.isPinned ? "pm_comment.pinned" : "pm_comment.unpinned",
-            entityType: "PmComment",
-            entityId: comment.id,
-            details: { issueId: comment.issueId }
-        });
-        
-        return comment;
-    })
+    /**
+     * Create a new comment (optionally a reply to another comment).
+     */
+    create: publicProcedure
+        .input(z.object({
+            issueId: z.string(),
+            authorId: z.string(),
+            content: z.string().min(1).max(10000),
+            parentId: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+            const { issueId, authorId, content } = input;
+            // Normalize parentId: treat empty string as undefined (null in DB)
+            const parentId = input.parentId && input.parentId.trim() !== "" ? input.parentId : undefined;
+
+            try {
+                // Validate author exists to produce a clear error instead of a FK failure
+                const author = await prisma.user.findUnique({ where: { id: authorId } });
+                if (!author) throw new Error(`Author not found: ${authorId}`);
+
+                // 1. Create the comment
+                const comment = await prisma.pmComment.create({
+                    data: { issueId, authorId, content, parentId },
+                    include: {
+                        author: { select: { id: true, name: true, image: true } },
+                        issue: { select: { key: true, title: true, projectId: true, assigneeId: true, creatorId: true } }
+                    }
+                });
+
+                // 2. Parse @mentions and resolve to users
+                const handles = extractMentions(content);
+                if (handles.length > 0) {
+                    const mentionMap = await resolveMentions(handles);
+                    const mentionedUserIds = [...mentionMap.values()];
+
+                    // 3. Store mention records — use individual upserts so cuid() @default fires
+                    if (mentionedUserIds.length > 0) {
+                        await Promise.all(
+                            mentionedUserIds.map(userId =>
+                                prisma.pmCommentMention.upsert({
+                                    where: { commentId_userId: { commentId: comment.id, userId } },
+                                    update: {},
+                                    create: { commentId: comment.id, userId },
+                                })
+                            )
+                        );
+
+                        // 4. Notify mentioned users
+                        await notifyMany(
+                            mentionedUserIds.filter(id => id !== authorId),
+                            "mentioned",
+                            `${comment.author.name || "Someone"} mentioned you in ${comment.issue.key}`,
+                            {
+                                issueId,
+                                issueKey: comment.issue.key,
+                                issueTitle: comment.issue.title,
+                                commentId: comment.id,
+                                actorName: comment.author.name ?? undefined,
+                                projectId: comment.issue.projectId
+                            }
+                        );
+                    }
+                }
+
+                // 5. Notify issue stakeholders (assignee + creator) if not the author
+                const stakeholders = [
+                    comment.issue.assigneeId,
+                    comment.issue.creatorId
+                ].filter((id): id is string => !!id && id !== authorId);
+
+                if (stakeholders.length > 0) {
+                    await notifyMany(
+                        stakeholders,
+                        "comment_added",
+                        `${comment.author.name || "Someone"} commented on ${comment.issue.key}`,
+                        {
+                            issueId,
+                            issueKey: comment.issue.key,
+                            issueTitle: comment.issue.title,
+                            commentId: comment.id,
+                            actorName: comment.author.name ?? undefined,
+                            projectId: comment.issue.projectId
+                        }
+                    );
+                }
+
+                // 6. Emit real-time update
+                console.log(`[Socket] Emit comment-added to project:${comment.issue.projectId}`);
+
+                return comment;
+            } catch (err: any) {
+                console.error("[pmComments.create] Error:", err?.message ?? err);
+                throw new Error(err?.message ?? "Failed to create comment");
+            }
+        }),
+
+    /**
+     * Edit an existing comment (author only).
+     */
+    update: publicProcedure
+        .input(z.object({
+            id: z.string(),
+            content: z.string().min(1).max(10000),
+            authorId: z.string(), // For permission check
+        }))
+        .mutation(async ({ input }) => {
+            const { id, content, authorId } = input;
+
+            const existing = await prisma.pmComment.findUnique({ where: { id } });
+            if (!existing) throw new Error("Comment not found");
+            if (existing.authorId !== authorId) throw new Error("Only the author can edit this comment");
+
+            return prisma.pmComment.update({
+                where: { id },
+                data: { content, editedAt: new Date() },
+                include: {
+                    author: { select: { id: true, name: true, image: true } }
+                }
+            });
+        }),
+
+    /**
+     * Delete a comment (author or project admin).
+     */
+    delete: publicProcedure
+        .input(z.object({
+            id: z.string(),
+            authorId: z.string(),
+        }))
+        .mutation(async ({ input }) => {
+            const { id, authorId } = input;
+
+            const existing = await prisma.pmComment.findUnique({ where: { id } });
+            if (!existing) throw new Error("Comment not found");
+            if (existing.authorId !== authorId) throw new Error("Only the author can delete this comment");
+
+            await prisma.pmComment.update({ 
+                where: { id },
+                data: { deletedAt: new Date(), deletedById: authorId } as any
+            });
+            return { success: true };
+        }),
+
+    /**
+     * Get comment count for an issue.
+     */
+    count: publicProcedure
+        .input(z.object({ issueId: z.string() }))
+        .query(async ({ input }) => {
+            return prisma.pmComment.count({ where: { issueId: input.issueId, deletedAt: null } as any });
+        }),
 });

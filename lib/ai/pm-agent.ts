@@ -1,3 +1,4 @@
+import prisma from "../prisma";
 /**
  * Friday PM AI Inner Agent
  * LangGraph-based agent connected to local Ollama + LangFuse tracing.
@@ -10,16 +11,24 @@
  */
 
 import { StateGraph, Annotation, END } from "@langchain/langgraph";
+import { ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { getLLMProvider } from "@/lib/ai/provider";
+import {   PmIssuePriority } from "@prisma/client";
+
+
 
 // ---------------------------------------------------------------------------
-// LLM — retrieved from provider registry
+// LLM — local Ollama instance (points to the docker-compose service)
 // ---------------------------------------------------------------------------
-const llm = getLLMProvider();
+const llm = new ChatOpenAI({
+    configuration: {
+        baseURL: process.env.OPENAI_BASE_URL || "http://localhost:11434/v1",
+    },
+    model: process.env.OPENAI_MODEL_NAME || "llama3",
+    apiKey: process.env.OPENAI_API_KEY || "not-needed-for-local",
+    temperature: 0.3,
+});
 
 // ---------------------------------------------------------------------------
 // Agent State
@@ -63,7 +72,7 @@ Respond as JSON: { "title": "...", "description": "..." }`;
                 title: parsed.title,
                 description: parsed.description,
                 priority: (priority as PmIssuePriority) ?? PmIssuePriority.MEDIUM,
-                status: PmIssueStatus.BACKLOG,
+                status: "BACKLOG",
                 creatorId: systemUser.id,
             },
         });
@@ -147,7 +156,7 @@ Provide a concise 3-point health report covering:
 const autoPrioritizeBacklogTool = tool(
     async ({ projectId }) => {
         const issues = await prisma.pmIssue.findMany({
-            where: { projectId, status: PmIssueStatus.BACKLOG },
+            where: { projectId, status: "BACKLOG" },
             select: { key: true, title: true, storyPoints: true, priority: true },
             orderBy: { createdAt: "asc" },
             take: 20,
@@ -171,92 +180,28 @@ Return a prioritized list as: "1. FPM-X — reason\n2. FPM-Y — reason..."`;
     }
 );
 
-const assignIssueTool = tool(
-    async ({ issueKey, assigneeId }) => {
-        try {
-            const issue = await prisma.pmIssue.update({
-                where: { key: issueKey },
-                data: { assigneeId }
-            });
-            return `Assigned issue ${issue.key} to user ${assigneeId}.`;
-        } catch (error: any) {
-            return `Error assigning issue: ${error.message}`;
-        }
-    },
-    {
-        name: "assign_issue",
-        description: "Assign a specific issue (by key) to a user.",
-        schema: z.object({ issueKey: z.string(), assigneeId: z.string() })
-    }
-);
+const tools = [generateIssueTool, detectDuplicatesTool, analyzeSprintHealthTool, autoPrioritizeBacklogTool] as any[];
+const llmWithTools = llm.bindTools(tools);
 
-const updateIssueStatusTool = tool(
-    async ({ issueKey, status }) => {
-        try {
-            const issue = await prisma.pmIssue.update({
-                where: { key: issueKey },
-                data: { status }
-            });
-            return `Moved issue ${issue.key} to status ${status}.`;
-        } catch (error: any) {
-            return `Error updating issue: ${error.message}`;
-        }
-    },
-    {
-        name: "update_issue_status",
-        description: "Update the status of an issue (e.g. TODO, IN_PROGRESS, DONE).",
-        schema: z.object({ issueKey: z.string(), status: z.nativeEnum(PmIssueStatus) })
-    }
-);
+// ---------------------------------------------------------------------------
+// Graph
+// ---------------------------------------------------------------------------
+async function agentNode(state: typeof AgentState.State) {
+    const response = await llmWithTools.invoke(state.input);
+    return { messages: [state.input, response.content as string], result: response.content as string };
+}
 
-const createSubtasksTool = tool(
-    async ({ parentIssueKey, subtasks }) => {
-        try {
-            const parent = await prisma.pmIssue.findUnique({ where: { key: parentIssueKey }, include: { project: true } });
-            if (!parent) return `Parent issue ${parentIssueKey} not found.`;
-            
-            const results = [];
-            let count = await prisma.pmIssue.count({ where: { projectId: parent.projectId } });
-            
-            for (const subtask of subtasks) {
-                count++;
-                const newIssue = await prisma.pmIssue.create({
-                    data: {
-                        key: `${parent.project.key}-${count}`,
-                        projectId: parent.projectId,
-                        title: subtask.title,
-                        description: subtask.description || undefined,
-                        creatorId: parent.creatorId,
-                    }
-                });
-                
-                await prisma.issueRelation.create({
-                    data: {
-                        fromIssueId: newIssue.id,
-                        toIssueId: parent.id,
-                        type: "DEPENDS_ON"
-                    }
-                });
-                results.push(newIssue.key);
-            }
-            return `Created ${results.length} subtasks: ${results.join(", ")}`;
-        } catch (error: any) {
-            return `Error creating subtasks: ${error.message}`;
-        }
-    },
-    {
-        name: "create_subtasks",
-        description: "Create multiple subtask issues that depend on a parent issue.",
-        schema: z.object({ 
-            parentIssueKey: z.string(), 
-            subtasks: z.array(z.object({ title: z.string(), description: z.string().optional() }))
-        })
-    }
-);
+const graph = new StateGraph(AgentState)
+    .addNode("agent", agentNode)
+    .addEdge("__start__", "agent")
+    .addEdge("agent", END);
 
-export const tools = [generateIssueTool, detectDuplicatesTool, analyzeSprintHealthTool, autoPrioritizeBacklogTool, assignIssueTool, updateIssueStatusTool, createSubtasksTool];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const llmWithTools = (llm as any).bindTools(tools) as typeof llm;
+export const pmAgent = graph.compile();
 
-// Exposed for executor to use via createReactAgent
-export { llmWithTools };
+// ---------------------------------------------------------------------------
+// Convenience runner
+// ---------------------------------------------------------------------------
+export async function runPmAgent(input: string, projectId: string): Promise<string> {
+    const result = await pmAgent.invoke({ input, projectId });
+    return result.result;
+}

@@ -7,9 +7,9 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('DEBUG: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-import '@testing-library/jest-dom';
-import 'jest-extended';
-import { server } from './tests/msw/server';
+require('@testing-library/jest-dom');
+require('jest-extended');
+const { server } = require('./tests/msw/server');
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());

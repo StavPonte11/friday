@@ -27,7 +27,7 @@ describe('prompt-merge', () => {
             // Since default handler dates are created same time, we mock to force condition
             const conflict = await detectConflict('feat/test--prompt-1', 'prompt-1');
             // Given default factory dates, prodUpdatedAt == featCreatedAt so no conflict
-            expect(conflict).toBeFalse();
+            expect(conflict).toBeFalsy();
         });
 
         it('returns conflict when production updated after feature branch was created', async () => {
@@ -40,7 +40,7 @@ describe('prompt-merge', () => {
         it('returns no conflict when production prompt does not yet exist', async () => {
             server.use(langfuseErrorHandlers.notFound);
             const conflict = await detectConflict('feat/test--new-prompt', 'new-prompt');
-            expect(conflict).toBeFalse();
+            expect(conflict).toBeFalsy();
         });
     });
 

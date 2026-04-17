@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { router, publicProcedure, protectedProcedure } from "../init";
-import { prisma } from "@/lib/prisma";
-import { getDailyActiveUsers, getFeatureUsage, getIssuesCreatedPerDay, generateInsights, trackEvent } from "../../analytics";
+import { router, publicProcedure } from "../init";
+import prisma from "../../prisma";
 
 export const pmAnalyticsRouter = router({
     /**
@@ -16,7 +15,7 @@ export const pmAnalyticsRouter = router({
             });
             if (!sprint || !sprint.startDate || !sprint.endDate) return [];
 
-            const totalPoints = sprint.issues.reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0);
+            const totalPoints = sprint.issues.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0);
             const startDate = new Date(sprint.startDate);
             const endDate = new Date(sprint.endDate);
             const days: { date: string; remaining: number; ideal: number }[] = [];
@@ -27,15 +26,15 @@ export const pmAnalyticsRouter = router({
 
             for (let d = 0; d <= totalDays; d++) {
                 const date = new Date(startDate.getTime() + d * msPerDay);
-                const dateStr = date.toISOString().split("T")[0]!;
+                const dateStr = date.toISOString().split("T")[0];
 
                 // Issues completed on this day
-                const completedToday = sprint.issues.filter((i) => {
+                const completedToday = sprint.issues.filter((i: any) => {
                     if (!i.updatedAt) return false;
                     const updated = new Date(i.updatedAt).toISOString().split("T")[0];
                     return updated === dateStr && i.status === "DONE";
                 });
-                remaining -= completedToday.reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0);
+                remaining -= completedToday.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0);
 
                 days.push({
                     date: dateStr,
@@ -59,12 +58,12 @@ export const pmAnalyticsRouter = router({
                 orderBy: { startDate: "asc" },
             });
 
-            return sprints.map((s) => ({
+            return sprints.map((s: any) => ({
                 sprint: s.name,
                 completed: s.issues
-                    .filter((i) => i.status === "DONE")
-                    .reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0),
-                committed: s.issues.reduce((sum: number, i) => sum + (i.storyPoints ?? 0), 0),
+                    .filter((i: any) => i.status === "DONE")
+                    .reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0),
+                committed: s.issues.reduce((sum: number, i: any) => sum + (i.storyPoints ?? 0), 0),
             }));
         }),
 
@@ -88,10 +87,10 @@ export const pmAnalyticsRouter = router({
             for (let d = input.days; d >= 0; d--) {
                 const date = new Date();
                 date.setDate(date.getDate() - d);
-                const key = date.toISOString().split("T")[0]!;
+                const key = date.toISOString().split("T")[0];
                 result[key] = {};
                 for (const s of statuses) {
-                    result[key][s] = issues.filter((i) => {
+                    result[key][s] = issues.filter((i: any) => {
                         const created = new Date(i.createdAt) <= date;
                         return created && i.status === s;
                     }).length;
@@ -114,7 +113,7 @@ export const pmAnalyticsRouter = router({
                 take: 50,
             });
 
-            return issues.map((i) => ({
+            return issues.map((i: any) => ({
                 key: i.key,
                 title: i.title,
                 priority: i.priority,
@@ -148,40 +147,65 @@ export const pmAnalyticsRouter = router({
             return Object.values(byAssignee).sort((a, b) => b.points - a.points);
         }),
 
-    // MVP Analytics
-    
-    dailyActiveUsers: protectedProcedure
-        .input(z.object({ days: z.number().default(30) }).optional())
+    /**
+     * Sprint Health: completion rate vs scope creep
+     */
+    sprintHealth: publicProcedure
+        .input(z.object({ sprintId: z.string() }))
         .query(async ({ input }) => {
-            return getDailyActiveUsers(input?.days);
-        }),
-        
-    featureUsage: protectedProcedure
-        .input(z.object({ days: z.number().default(30) }).optional())
-        .query(async ({ input }) => {
-            return getFeatureUsage(input?.days);
-        }),
-        
-    issuesCreatedPerDay: protectedProcedure
-        .input(z.object({ days: z.number().default(30) }).optional())
-        .query(async ({ input }) => {
-            return getIssuesCreatedPerDay(input?.days);
-        }),
-        
-    uxInsights: protectedProcedure
-        .query(async () => {
-            return generateInsights();
+            const sprint = await prisma.pmSprint.findUnique({
+                where: { id: input.sprintId },
+                include: { issues: true },
+            });
+            if (!sprint) return null;
+
+            const totalIssues = sprint.issues.length;
+            const completedIssues = sprint.issues.filter(i => i.status === "DONE").length;
+            const completionRate = totalIssues > 0 ? (completedIssues / totalIssues) * 100 : 0;
+
+            // Scope creep: issues added after sprint start
+            const addedAfterStart = sprint.issues.filter(i => 
+                sprint.startDate && i.createdAt > sprint.startDate
+            ).length;
+            const scopeCreep = totalIssues > 0 ? (addedAfterStart / totalIssues) * 100 : 0;
+
+            // Health Score calculation (naive): Completion % - (Scope Creep % / 2)
+            const score = Math.max(0, Math.min(100, completionRate - (scopeCreep / 2)));
+
+            return {
+                score,
+                completionRate,
+                scopeCreep,
+                totalIssues,
+                completedIssues,
+                addedAfterStart
+            };
         }),
 
-    trackEvent: publicProcedure
-        .input(z.object({ 
-            event: z.string(), 
-            properties: z.record(z.string(), z.any()).optional()
-        }))
-        .mutation(async ({ input }) => {
-            // Note: we're using a public endpoint for trackEvent to allow simple tracking from client,
-            // but we could make it protected if needed. Ideally we'd map it to AnalyticsEventName.
-            await trackEvent(input.event as any, (input.properties || {}) as Record<string, string | number | boolean | null>);
-            return { success: true };
-        })
+    /**
+     * Project Report Stats for AI Report Generation
+     */
+    projectReportStats: publicProcedure
+        .input(z.object({ projectId: z.string() }))
+        .query(async ({ input }) => {
+            const issues = await prisma.pmIssue.findMany({
+                where: { projectId: input.projectId }
+            });
+
+            const committed = issues.reduce((sum: number, i: any) => sum + (i.storyPoints || 0), 0);
+            const completedIssues = issues.filter((i: any) => i.status === "DONE");
+            const completed = completedIssues.reduce((sum: number, i: any) => sum + (i.storyPoints || 0), 0);
+            const openIssues = issues.filter((i: any) => i.status !== "DONE").length;
+            const blockedIssues = issues.filter((i: any) => i.status === "BLOCKER" || i.priority === "CRITICAL").length;
+            
+            // Calculate real cycle time for done issues
+            let totalCycleDays = 0;
+            completedIssues.forEach((i: any) => {
+                const days = (new Date(i.updatedAt).getTime() - new Date(i.createdAt).getTime()) / 86400000;
+                totalCycleDays += days;
+            });
+            const avgCycleDays = completedIssues.length > 0 ? parseFloat((totalCycleDays / completedIssues.length).toFixed(1)) : 0;
+
+            return { committed, completed, openIssues, blockedIssues, avgCycleDays };
+        }),
 });

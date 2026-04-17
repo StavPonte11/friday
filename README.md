@@ -1,19 +1,52 @@
-# F.R.I.D.A.Y. - AI Agent Platform
+# F.R.I.D.A.Y.
+## Fast Robust Intelligent Digital Assistant Yield
 
-Welcome to **F.R.I.D.A.Y.**, a production-grade orchestration platform built for multi-agent collaboration, prompt engineering, and precise observability.
+Welcome to **F.R.I.D.A.Y.**, the next-generation orchestration platform designed to bridge the gap between autonomous AI agents and complex, real-world productivity. F.R.I.D.A.Y. provides the infrastructure, observability, and tools necessary for multi-agent systems to collaborate with precision and reliability.
 
-This project is built using:
-- **Next.js 16 (React 19)** - App Router frontend and API routes.
-- **TypeScript** - Strongly typed logic and interfaces.
-- **Tailwind CSS & Shadcn/UI** - Styling and core component framework.
-- **Jest & Playwright** - Comprehensive Unit, Integration, and End-to-End testing.
-- **Langfuse** - Core observability, prompt management, and telemetry.
-- **Mock Service Worker (MSW)** - API mocking for robust isolation during testing.
+---
 
-## Getting Started
+## 🎯 Mission
+Our mission is to empower developers and organizations to build, deploy, and scale robust AI agent ecosystems that can handle non-trivial tasks with human-like reasoning and machine-like efficiency.
+
+## 👁️ Vision
+To become the definitive backbone of the "Agentic Web," where intelligent assistants seamlessly manage projects, monitor their own performance, and evolve through continuous observation and precise prompt engineering.
+
+---
+
+## ✨ Full Feature List
+
+### 🤖 Core Orchestration
+- **Multi-Agent Collaboration**: Support for parallel agents working on independent tasks with shared or isolated states.
+- **Dynamic Skill Injection**: Ability to load the most relevant "skills" (custom scripts, instructions, resources) into agent context on-the-fly.
+- **Agentic Workflows**: Pre-defined and custom-built step-by-step guides for complex multi-tool operations.
+- **Strict Typing & Validation**: Zero-tolerance policy for `any` types, ensuring domain integrity across all agent actions.
+
+### 📋 Friday PM (Project Management Module)
+- **Intelligent Issue Tracking**: Create, list, and update issues via natural language or MCP-compatible tools.
+- **Sprint & Backlog Management**: Organize work into sprints, backlogs, and boards with AI-driven health analysis.
+- **AI-Generated Requirements**: Transform vague descriptions into well-structured technical issues and acceptance criteria.
+- **Live Board Visualization**: Real-time updates for project progress with a sleek Kanban-style interface.
+
+### 🔍 Friday Traces (AI Observability Module)
+- **Deep Session Inspection**: Complete trace history for every agent interaction, including input, output, and internal reasoning steps.
+- **Prompt Management**: Centralized versioning and deployment of LLM prompts via Langfuse integration.
+- **Precision Metrics**: Real-time tracking of token usage, latency, cost, and success rates.
+- **Telemetry Export**: Support for OTLP and OpenTelemetry standards for enterprise-grade monitoring.
+
+### 🛠️ Developer Experience
+- **MCP Tool Integration**: Built-in support for the Model Context Protocol (MCP) to extend agent capabilities with external services.
+- **Robust Mocking Layer**: Integrated MSW (Mock Service Worker) for reliable, isolated testing of both frontend and backend.
+- **Advanced Testing Suite**: Comprehensive coverage with Vitest/Jest for unit tests and Playwright for E2E/visual regression testing.
+- **Type-Safe API Design**: Built on tRPC and Zod for end-to-end type safety from the server to the browser.
+
+---
+
+## 🚀 Getting Started
 
 ### 1. Prerequisites
-Ensure you have Node.js 20+ installed. F.R.I.D.A.Y. heavily utilizes modern ESM and Fetch APIs.
+- **Node.js 20+**
+- **npm** or **pnpm**
+- **Langfuse Account** (for observability)
 
 ### 2. Installation
 ```bash
@@ -21,79 +54,50 @@ npm install
 ```
 
 ### 3. Environment Setup
-Before starting the application or running tests, you must configure your environment variables. 
-Copy `.env.example` (or create a new `.env.local` / `.env.test`) with the following keys mapped correctly. See `lib/env.ts` for schema validation:
-
+Copy `.env.example` to `.env.local` and configure your keys:
 ```env
 # Langfuse Observability
 LANGFUSE_PUBLIC_KEY="pk-..."
 LANGFUSE_SECRET_KEY="sk-..."
-LANGFUSE_BASE_URL="https://cloud.langfuse.com"
 
-# GitLab Webhooks (if applicable)
+# GitLab / Infrastructure (Optional)
 GITLAB_TOKEN="gl-..."
-GITLAB_WEBHOOK_SECRET="your-webhook-secret"
 
-# App Config
-PLATFORM_ADMIN_ROLE="admin"
+# Prisma / Database
+DATABASE_URL="postgresql://..."
 ```
 
 ### 4. Running the Development Server
 ```bash
 npm run dev
 ```
-> [!WARNING]  
-> **Turbopack Notice**: By default, `npm run dev` in F.R.I.D.A.Y runs Next.js with the traditional **Webpack** compiler (`next dev --webpack`). 
-> 
-> *Why?* Turbopack (the Next.js Rust compiler) currently features a known bug where it panics when the absolute directory path contains non-ASCII characters (e.g., Hebrew characters like `שולחן העבודה`). If your directory path is purely ASCII, you may safely launch the app using `next dev --turbo` for faster compilations.
 
-Navigate to [http://localhost:3000](http://localhost:3000) to view the application.
+> [!TIP]
+> **Performance Tip**: If your directory path contains only ASCII characters, use `next dev --turbo` for significantly faster build times.
 
 ---
 
-## Project Architecture
+## 🏗️ Project Architecture
 
-### Directory Structure
-
-- `app/`: Next.js App Router (Pages, Layouts, API Routes).
-- `components/`: React UI components. Features categorized subfolders like `ui/` for Shadcn components, `observability/`, and `prompts/`.
-- `hooks/`: Reusable React Hooks (e.g., `use-observability.ts`).
-- `lib/`: Core backend logic, utilities, configuration parsing (`env.ts`), and API client adapters.
-- `types/`: Global domain structures and interfaces (Strictly Typed).
-- `tests/`: Jest suites for unit and backend integration logic. Includes MSW handlers.
-- `e2e/`: Playwright suites handling end-to-end browser and visual regressions.
-- `.agent/skills/`: Custom instructions and execution profiles specifically for AI agents augmenting this repository.
+```text
+app/          -> Next.js App Router & API Layers
+components/   -> Specialized UI components (PM, Traces, Core)
+packages/     -> Shared modules: db, mcp-tools, module-sdk
+lib/          -> Core engine, utilities, and integrations
+types/        -> Global domain models (Strictly Typed)
+e2e/          -> Playwright test suites
+```
 
 ---
 
-## Testing & Quality Assurance
+## 🛡️ Agentic Guidelines
 
-F.R.I.D.A.Y employs a multi-tier testing strategy. 
-
-### Commands
-
-- **Unit & Integration (Jest)**:
-  - `npm run test:unit` - Runs unit tests across both `lib/` (Node) and `components/` (JSDOM).
-  - `npm run test:integration` - Runs API and external integration tests.
-  - `npm run test:coverage` - Generates a Cobertura-compatible coverage report.
-- **End-to-End (Playwright)**:
-  - `npm run test:e2e` - Executes browser tests headlessly.
-  - `npm run test:e2e:ui` - Opens the Playwright interactive UI.
-- **Static Analysis**:
-  - `npm run lint` - Runs ESLint.
-  - `npx tsc --noEmit` - Validates strict TypeScript compilation.
-
-> [!CAUTION]
-> **Jest ESM Compatibility**: Jest currently struggles with pure ESM modules (like `until-async`). This repository utilizes Next.js compilation overrides to pass parsing. If significant ESM blockers arise in the future, migrating the test runner to **Vitest** is recommended.
+F.R.I.D.A.Y. is "Agent-Ready." AI Agents operating on this repository **MUST**:
+1. **Prioritize Skills**: Always check `.agent/skills/` before complex implementations.
+2. **Defend the Types**: Use Zod schemas and TypeScript interfaces for all external data.
+3. **Trace Everything**: Ensure every new feature is instrumented for observability.
+4. **Verify before Claiming**: Run `npm run test:all` before assuming success.
 
 ---
 
-## Agentic Guidelines
-
-F.R.I.D.A.Y is maintained both by human developers and autonomous AI Agents. If you are an AI agent operating on this repository, you **MUST** adhere to the following strict guidelines:
-
-1. **Typing Standards**: Absolutely **NO `any`** types. All domain models, API responses, and React component props must be explicitly typed (e.g., referring to `types/index.ts`). Verify types using `npx tsc --noEmit`.
-2. **Defensive Programming**: When building features in `lib/` that communicate externally (e.g., `fetchLangfuseAPI`), you must implement robust `try/catch` flows, default fallbacks, and validate the existence of deeply nested objects before using them.
-3. **Observability**: When adding new agent tasks or modifying existing endpoints, assure interactions are properly ingested by Langfuse (cost tracking, latencies, tokens). Refer to `components/observability/trace-table.tsx` for integration patterns.
-4. **Skills First**: Before beginning heavy logic implementations, check the `.agent/skills/` directory using the `list_dir` tool. You must utilize these skills to retain project alignment and architectural coherence.
-5. **No Blind Deployments**: Always run verification suites (`npm run test:all` and TypeScript compilation) prior to assuming a feature is complete.
+Built with ❤️ by the F.R.I.D.A.Y. Team.

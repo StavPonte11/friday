@@ -1,55 +1,71 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../init";
-import { searchMemory } from "@/lib/ai/memory";
+import { router, publicProcedure } from "../init";
 import { prisma } from "@/lib/prisma";
-import { trackEvent } from "@/lib/analytics";
 
 export const pmSearchRouter = router({
-    semanticSearch: protectedProcedure
-        .input(z.object({
-            query: z.string().min(1).max(500),
-            projectId: z.string().optional(),
-            limit: z.number().int().min(1).max(25).default(10)
+    global: publicProcedure
+        .input(z.object({ 
+            query: z.string().min(2), 
+            limit: z.number().int().min(1).default(5),
+            userId: z.string().optional()
         }))
-        .query(async ({ ctx, input }) => {
-            const userId = ctx.session.user.id;
-
-            // Find similar issue embeddings
-            const similar = await searchMemory(input.query, input.limit);
-
-            if (similar.length === 0) return { results: [] };
-
-            const issueIds = similar.map(s => s.issueId);
-
-            // Hydrate with full issue data
-            const issues = await prisma.pmIssue.findMany({
-                where: {
-                    id: { in: issueIds },
-                    ...(input.projectId ? { projectId: input.projectId } : {})
-                },
-                select: {
-                    id: true,
-                    key: true,
-                    title: true,
-                    status: true,
-                    priority: true,
-                    project: { select: { id: true, name: true, key: true } },
-                    assignee: { select: { id: true, name: true, image: true } }
-                }
-            });
-
-            // Merge similarity score back in, maintain rank order
-            const hydrated = issueIds
-                .map(id => {
-                    const issue = issues.find(i => i.id === id);
-                    const similarity = similar.find(s => s.issueId === id)?.similarity ?? 0;
-                    if (!issue) return null;
-                    return { ...issue, similarity };
+        .query(async ({ input }) => {
+            const [issues, projects] = await Promise.all([
+                prisma.pmIssue.findMany({
+                    where: {
+                        deletedAt: null,
+                        OR: [
+                            { title: { contains: input.query, mode: "insensitive" } },
+                            { key: { contains: input.query, mode: "insensitive" } },
+                            { description: { contains: input.query, mode: "insensitive" } }
+                        ]
+                    },
+                    take: input.limit,
+                    select: { id: true, key: true, title: true, status: true, projectId: true }
+                }),
+                prisma.pmProject.findMany({
+                    where: {
+                        OR: [
+                            { name: { contains: input.query, mode: "insensitive" } },
+                            { key: { contains: input.query, mode: "insensitive" } },
+                        ]
+                    },
+                    take: input.limit,
+                    select: { id: true, key: true, name: true }
                 })
-                .filter((r): r is NonNullable<typeof r> => r !== null);
-
-            await trackEvent("pm.issue.view", { userId, query: input.query });
-
-            return { results: hydrated };
+            ]);
+            
+            return { issues, projects };
+        }),
+        
+    recent: publicProcedure
+        .input(z.object({ userId: z.string(), limit: z.number().int().default(5) }))
+        .query(async ({ input }) => {
+            const recentViews = await prisma.pmRecentView.findMany({
+                where: { userId: input.userId },
+                orderBy: { viewedAt: 'desc' },
+                take: input.limit
+            });
+            
+            // Hydrate records
+            const issueIds = recentViews.filter(r => r.entityType === 'issue').map(r => r.entityId);
+            const projectIds = recentViews.filter(r => r.entityType === 'project').map(r => r.entityId);
+            
+            const [issues, projects] = await Promise.all([
+                issueIds.length > 0 ? prisma.pmIssue.findMany({
+                    where: { id: { in: issueIds }, deletedAt: null },
+                    select: { id: true, key: true, title: true, status: true }
+                }) : [],
+                projectIds.length > 0 ? prisma.pmProject.findMany({
+                    where: { id: { in: projectIds } },
+                    select: { id: true, key: true, name: true }
+                }) : []
+            ]);
+            
+            return {
+                issues,
+                projects,
+                orderedRaw: recentViews
+            };
         })
 });

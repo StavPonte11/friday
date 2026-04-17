@@ -1,11 +1,13 @@
+import {prisma} from "../../lib/prisma";
 /**
  * Jira Sync Worker
  * Pulls issues from Jira REST API and upserts them into Friday PM via Prisma.
  * Triggered by RabbitMQ message: { projectId, jiraProjectKey, accessToken }
  */
 import { queueService, QUEUES } from "../shared/queues";
-import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import {   PmIssuePriority } from "@prisma/client";
+
+
 
 interface JiraSyncPayload {
     projectId: string;        // Friday PM project ID
@@ -27,13 +29,13 @@ interface JiraIssue {
     };
 }
 
-function mapJiraStatus(status: string): PmIssueStatus {
+function mapJiraStatus(status: string): string {
     const s = status.toLowerCase();
-    if (s.includes("done") || s.includes("closed") || s.includes("resolved")) return PmIssueStatus.DONE;
-    if (s.includes("in progress") || s.includes("in-progress")) return PmIssueStatus.IN_PROGRESS;
-    if (s.includes("review")) return PmIssueStatus.IN_REVIEW;
-    if (s.includes("backlog")) return PmIssueStatus.BACKLOG;
-    return PmIssueStatus.TODO;
+    if (s.includes("done") || s.includes("closed") || s.includes("resolved")) return "DONE";
+    if (s.includes("in progress") || s.includes("in-progress")) return "IN_PROGRESS";
+    if (s.includes("review")) return "IN_REVIEW";
+    if (s.includes("backlog")) return "BACKLOG";
+    return "TODO";
 }
 
 function mapJiraPriority(priority: string): PmIssuePriority {

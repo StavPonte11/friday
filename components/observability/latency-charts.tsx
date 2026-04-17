@@ -15,7 +15,7 @@ export function LatencyCharts() {
 
         return data.data.slice(0, 30).map((trace: any) => ({
             name: trace.name || trace.id?.substring(0, 8) || "Trace",
-            latency: trace.latency || Math.random() * 2,
+            latency: trace.latency || 0,
         }));
     }, [data]);
 

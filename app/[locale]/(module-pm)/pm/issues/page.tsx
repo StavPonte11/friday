@@ -1,29 +1,64 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { ListOrdered, Plus, Filter, CircleDashed, CheckCircle2, AlertCircle } from "lucide-react";
+import { ListOrdered, Filter, CircleDashed, CheckCircle2, AlertCircle, Building } from "lucide-react";
 import { useLocale } from "next-intl";
-import { PmIssueStatus, PmIssuePriority } from "@prisma/client";
+import {  PmIssuePriority } from "@prisma/client";
+import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
+import { IssueEditor } from "@/components/issues/IssueEditor";
+import { IssueInsightsPanel } from "@/components/issues/IssueInsightsPanel";
+import { IssueFilters } from "@/components/issues/IssueFilters";
+import { BulkActionsBar } from "@/components/issues/BulkActionsBar";
 
 // Simplified mapping for foundatoin phase
 const statusIcons = {
-    [PmIssueStatus.TODO]: <CircleDashed size={16} className="text-muted-foreground" />,
-    [PmIssueStatus.IN_PROGRESS]: <CircleDashed size={16} className="text-blue-500" />,
-    [PmIssueStatus.DONE]: <CheckCircle2 size={16} className="text-green-500" />,
-    [PmIssueStatus.BACKLOG]: <CircleDashed size={16} className="text-muted-foreground opacity-50" />,
-    [PmIssueStatus.IN_REVIEW]: <AlertCircle size={16} className="text-purple-500" />,
-    [PmIssueStatus.CANCELED]: <AlertCircle size={16} className="text-red-500 line-through" />,
+    ["TODO"]: <CircleDashed size={16} className="text-muted-foreground" />,
+    ["IN_PROGRESS"]: <CircleDashed size={16} className="text-blue-500" />,
+    ["DONE"]: <CheckCircle2 size={16} className="text-green-500" />,
+    ["BACKLOG"]: <CircleDashed size={16} className="text-muted-foreground opacity-50" />,
+    ["IN_REVIEW"]: <AlertCircle size={16} className="text-purple-500" />,
+    ["CANCELED"]: <AlertCircle size={16} className="text-red-500 line-through" />,
 };
-
-// Hardcoded for foundational mock testing matching the active project
-const MOCK_PROJECT_ID = "cm7k12abc0001xyz";
 
 export default function IssuesPage() {
     const locale = useLocale();
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+    const [filters, setFilters] = useState<any>({ projectId: "" });
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-    const { data: issues, isLoading } = trpc.pmIssues.listByProject.useQuery({ projectId: MOCK_PROJECT_ID });
+    // Fetch all PM Projects
+    const { data: projects, isLoading: isProjectsLoading } = trpc.pmProjects.list.useQuery();
+
+    useEffect(() => {
+        if (projects && projects.length > 0 && (!selectedProjectId || !projects.find((p: any) => p.id === selectedProjectId))) {
+            setSelectedProjectId(projects[0].id);
+            setFilters({ projectId: projects[0].id });
+        } else if (projects?.length === 0) {
+            setSelectedProjectId("");
+            setFilters({ projectId: "" });
+        }
+    }, [projects, selectedProjectId]);
+
+    const { data: infiniteData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = trpc.pmIssues.listInfiniteByProject.useInfiniteQuery(
+        { ...filters, take: 20 },
+        { 
+            enabled: !!filters.projectId,
+            getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+        }
+    );
+
+    const issues = infiniteData?.pages.flatMap((page: any) => page.items) || [];
+
+    const toggleSelection = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const selectedIssue = issues?.find((i: any) => i.id === selectedIssueId);
 
     return (
         <div className="flex h-full max-w-7xl mx-auto overflow-hidden">
@@ -33,32 +68,61 @@ export default function IssuesPage() {
                         <h2 className="text-2xl font-bold tracking-tight">Issues</h2>
                         <p className="text-muted-foreground">Manage and track work items across the project.</p>
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90">
-                        <Plus size={16} /> New Issue
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2 shadow-sm">
+                            <Building size={16} className="text-muted-foreground" />
+                            <select 
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer outline-none w-40"
+                                disabled={isProjectsLoading}
+                            >
+                                {isProjectsLoading ? (
+                                    <option>Loading...</option>
+                                ) : projects?.length ? (
+                                    projects.map((p: any) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))
+                                ) : (
+                                    <option value="">No projects</option>
+                                )}
+                            </select>
+                        </div>
+                        {selectedProjectId && projects && <CreateIssueModal 
+                            projectId={selectedProjectId} 
+                            workspaceId={projects.find((p: any) => p.id === selectedProjectId)?.workspaceId || ""} 
+                        />}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-card border border-border p-2 rounded-lg">
-                    <Filter size={16} className="text-muted-foreground ml-2" />
-                    <input type="text" placeholder="Filter issues..." className="bg-transparent border-none outline-none flex-1 text-sm placeholder:text-muted-foreground text-foreground px-2" />
-                </div>
+                <IssueFilters 
+                    projectId={selectedProjectId} 
+                    currentFilters={filters} 
+                    onFilterChange={setFilters} 
+                />
 
                 {isLoading ? (
                     <div className="space-y-2">
-                        {[1, 2, 3, 4, 5].map(i => (
+                        {[1, 2, 3, 4, 5].map((i: any) => (
                             <div key={i} className="h-16 rounded-lg bg-card animate-pulse border border-border"></div>
                         ))}
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2 relative">
-                        {issues?.map((issue) => (
+                        {issues?.map((issue: any) => (
                             <div
                                 key={issue.id}
                                 onClick={() => setSelectedIssueId(issue.id)}
-                                className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${selectedIssueId === issue.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-border/80'}`}
+                                className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer hover:shadow-sm transition-all group ${selectedIssueId === issue.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-border/80'}`}
                             >
+                                <div 
+                                    className={`flex-shrink-0 w-5 h-5 border rounded flex items-center justify-center transition-colors ${selectedIds.includes(issue.id) ? 'bg-primary border-primary' : 'border-border group-hover:border-primary/50'}`}
+                                    onClick={(e) => toggleSelection(issue.id, e)}
+                                >
+                                    {selectedIds.includes(issue.id) && <CheckCircle2 size={12} className="text-primary-foreground" />}
+                                </div>
                                 <div className="flex-shrink-0" title={issue.status}>
-                                    {statusIcons[issue.status as PmIssueStatus] || statusIcons[PmIssueStatus.TODO]}
+                                    {statusIcons[issue.status as keyof typeof statusIcons] || statusIcons["TODO"]}
                                 </div>
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <span className="font-semibold text-sm truncate text-foreground">{issue.title}</span>
@@ -66,6 +130,9 @@ export default function IssuesPage() {
                                         <span className="font-mono uppercase px-1.5 py-0.5 bg-muted rounded border border-border/50">{issue.key}</span>
                                         {issue.priority !== PmIssuePriority.NONE && (
                                             <span className="capitalize">{issue.priority.toLowerCase()} Priority</span>
+                                        )}
+                                        {issue.type && (
+                                            <span className="px-1 py-0.5 bg-secondary rounded text-[10px] uppercase font-bold">{issue.type}</span>
                                         )}
                                     </div>
                                 </div>
@@ -83,6 +150,18 @@ export default function IssuesPage() {
                             </div>
                         ))}
 
+                        {hasNextPage && (
+                            <div className="flex justify-center pt-4 pb-4">
+                                <button 
+                                    onClick={() => fetchNextPage()} 
+                                    disabled={isFetchingNextPage}
+                                    className="px-6 py-2 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 disabled:opacity-50"
+                                >
+                                    {isFetchingNextPage ? "Loading more..." : "Load More"}
+                                </button>
+                            </div>
+                        )}
+
                         {issues?.length === 0 && (
                             <div className="flex flex-col items-center justify-center h-48 border border-dashed border-border rounded-lg text-muted-foreground text-sm">
                                 <ListOrdered size={32} className="mb-2 opacity-50" />
@@ -93,12 +172,19 @@ export default function IssuesPage() {
                 )}
             </div>
 
+            <BulkActionsBar 
+                projectId={selectedProjectId}
+                selectedIds={selectedIds}
+                onClearSelection={() => setSelectedIds([])}
+                onSuccess={() => refetch()}
+            />
+
             {/* Slide Over Details Pane */}
-            {selectedIssueId && (
+            {selectedIssueId && selectedIssue && (
                 <div className="w-full md:w-[600px] border-l border-border bg-card flex flex-col shadow-xl h-full slide-over animate-in slide-in-from-right">
                     <div className="flex items-center justify-between p-4 border-b border-border">
                         <div className="flex items-center gap-2 text-sm text-primary font-mono bg-primary/10 px-2 py-1 rounded">
-                            {issues?.find(i => i.id === selectedIssueId)?.key}
+                            {selectedIssue.key}
                         </div>
                         <button
                             onClick={() => setSelectedIssueId(null)}
@@ -108,36 +194,8 @@ export default function IssuesPage() {
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                        {/* Complex Rich Text / Tiptap implementation will go here. For now rendering placeholders. */}
-                        <h2 className="text-xl font-bold">{issues?.find(i => i.id === selectedIssueId)?.title}</h2>
-                        <div className="prose prose-sm dark:prose-invert">
-                            <p className="text-muted-foreground">{issues?.find(i => i.id === selectedIssueId)?.description || "No description provided. Click to add one."}</p>
-                        </div>
-
-                        <div className="border border-border rounded-lg p-4 grid grid-cols-2 gap-4 bg-muted/30">
-                            <div>
-                                <span className="text-xs text-muted-foreground block mb-1">Status</span>
-                                <div className="text-sm font-medium capitalize flex items-center gap-2">
-                                    {statusIcons[issues?.find(i => i.id === selectedIssueId)?.status as PmIssueStatus || PmIssueStatus.TODO]}
-                                    {issues?.find(i => i.id === selectedIssueId)?.status.replace('_', ' ').toLowerCase()}
-                                </div>
-                            </div>
-                            <div>
-                                <span className="text-xs text-muted-foreground block mb-1">Assignee</span>
-                                <div className="text-sm font-medium">Unassigned</div>
-                            </div>
-                            <div>
-                                <span className="text-xs text-muted-foreground block mb-1">Priority</span>
-                                <div className="text-sm font-medium capitalize">
-                                    {issues?.find(i => i.id === selectedIssueId)?.priority.toLowerCase()}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-4 border-t border-border bg-muted/20">
-                        <input type="text" placeholder="Add a comment..." className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                    <div className="flex-1 overflow-y-auto">
+                        <IssueEditor issueId={selectedIssue.id} projectId={selectedProjectId} />
                     </div>
                 </div>
             )}

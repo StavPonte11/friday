@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { FolderKanban, Plus, Clock, Search, Workflow, Target, Loader2, AlertCircle } from "lucide-react";
+import { FolderKanban, Plus, Clock, Search, Workflow, Target, Loader2, AlertCircle, Settings } from "lucide-react";
+import { ProjectWorkflowEditor } from "@/components/issues/ProjectWorkflowEditor";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
 import { useLocale } from "next-intl";
 
@@ -36,6 +38,7 @@ export default function ProjectsPage() {
     const [key, setKey] = useState("");
     const [description, setDescription] = useState("");
     const [formError, setFormError] = useState("");
+    const [configProjectId, setConfigProjectId] = useState<string | null>(null);
 
     // Fetch the first available workspace — replaces the hardcoded MOCK id
     const { data: workspaces, isLoading: wsLoading } = trpc.workspaces.list.useQuery();
@@ -44,15 +47,12 @@ export default function ProjectsPage() {
     const utils = trpc.useUtils();
 
     const { data: projects, isLoading: projectsLoading } =
-        trpc.pmProjects.list.useQuery(
-            { workspaceId: workspaceId! },
-            { enabled: !!workspaceId }
-        );
+        trpc.pmProjects.list.useQuery();
 
     const createProject = trpc.pmProjects.create.useMutation({
         onSuccess: () => {
             // Invalidate cache so the new project appears immediately
-            utils.pmProjects.list.invalidate({ workspaceId: workspaceId! });
+            utils.pmProjects.list.invalidate();
             closeModal();
         },
         onError: (err) => {
@@ -64,7 +64,7 @@ export default function ProjectsPage() {
 
     const filtered =
         projects?.filter(
-            (p) =>
+            (p: any) =>
                 p.name.toLowerCase().includes(search.toLowerCase()) ||
                 p.key.toLowerCase().includes(search.toLowerCase())
         ) || [];
@@ -142,7 +142,7 @@ export default function ProjectsPage() {
             )}
 
             {/* Loading skeletons */}
-            {isLoading && workspaceId && (
+            {isLoading && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <ProjectCardSkeleton />
                     <ProjectCardSkeleton />
@@ -151,7 +151,7 @@ export default function ProjectsPage() {
             )}
 
             {/* Empty state */}
-            {!isLoading && workspaceId && filtered.length === 0 && (
+            {!isLoading && filtered.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border rounded-lg text-muted-foreground">
                     <FolderKanban size={48} className="mb-4 opacity-50" />
                     <p className="font-medium">No projects found.</p>
@@ -160,45 +160,57 @@ export default function ProjectsPage() {
             )}
 
             {/* Project grid */}
-            {!isLoading && workspaceId && filtered.length > 0 && (
+            {!isLoading && filtered.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {filtered.map((project) => (
-                        <Link
+                    {filtered.map((project: any) => (
+                        <div
                             key={project.id}
-                            href={`/${locale}/pm/projects/${project.id}`}
-                            className="group border border-border rounded-lg bg-card p-5 hover:border-primary/50 transition-all hover:shadow-md flex flex-col"
+                            className="group border border-border rounded-lg bg-card p-5 hover:border-primary/50 transition-all hover:shadow-md flex flex-col relative"
                         >
-                            <div className="flex justify-between items-start mb-2">
+                            <Link href={`/${locale}/pm/projects/${project.id}`} className="absolute inset-0 z-0" />
+                            <div className="flex justify-between items-start mb-2 relative z-10">
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary font-bold shadow-inner">
                                         {project.key.substring(0, 1)}
                                     </div>
                                     <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
                                 </div>
-                                <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-muted-foreground border border-border/50">
-                                    {project.key}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setConfigProjectId(project.id);
+                                        }}
+                                        className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                                        title="Configure Workflow"
+                                    >
+                                        <Settings size={16} />
+                                    </button>
+                                    <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-muted-foreground border border-border/50">
+                                        {project.key}
+                                    </span>
+                                </div>
                             </div>
 
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1 relative z-10">
                                 {project.description || "No description provided."}
                             </p>
 
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-4">
-                                <div className="flex items-center gap-1.5" title="Sprints">
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-4 relative z-10">
+                                <Link href={`/${locale}/pm/board?project=${project.id}`} className="flex items-center gap-1.5 hover:text-primary transition-colors" title="Board">
                                     <Target size={14} className="text-blue-500" />
-                                    <span>{project._count?.sprints || 0} Sprints</span>
-                                </div>
-                                <div className="flex items-center gap-1.5" title="Issues">
+                                    <span>Board</span>
+                                </Link>
+                                <Link href={`/${locale}/pm/issues?project=${project.id}`} className="flex items-center gap-1.5 hover:text-primary transition-colors" title="Issues">
                                     <Workflow size={14} className="text-purple-500" />
                                     <span>{project._count?.issues || 0} Issues</span>
-                                </div>
+                                </Link>
                                 <div className="ml-auto flex items-center gap-1.5">
                                     <Clock size={14} />
                                     <span>{new Date(project.updatedAt).toLocaleDateString()}</span>
                                 </div>
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             )}
@@ -280,6 +292,15 @@ export default function ProjectsPage() {
                     </div>
                 </div>
             )}
+            {/* Workflow Config Modal */}
+            <Dialog open={!!configProjectId} onOpenChange={(open) => !open && setConfigProjectId(null)}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>Project Configuration</DialogTitle>
+                    </DialogHeader>
+                    {configProjectId && <ProjectWorkflowEditor projectId={configProjectId} />}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
