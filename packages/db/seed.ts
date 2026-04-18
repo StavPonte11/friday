@@ -1,4 +1,4 @@
-import prisma from "../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import { config } from "dotenv";
 config({ path: "../../.env" });
 

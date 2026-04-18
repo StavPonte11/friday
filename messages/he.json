@@ -4,5 +4,11 @@
     },
     "Shell": {
         "loading": "טוען..."
+    },
+    "pm": {
+        "metadata": {
+            "title": "F.R.I.D.A.Y PM",
+            "description": "ניהול פרויקטים באמצעות F.R.I.D.A.Y"
+        }
     }
 }

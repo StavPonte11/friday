@@ -8,9 +8,6 @@ import {prisma} from "../../lib/prisma";
  */
 import { queueService, QUEUES } from "../shared/queues";
 
-
-
-
 interface GitHubSyncPayload {
     action: "opened" | "merged" | "closed";
     prTitle: string;

@@ -9,17 +9,8 @@
  * Returns a ManagerReport object with both structured JSON and a rendered Markdown string.
  */
 
-import prisma from "../prisma";
-import { ChatOpenAI } from "@langchain/openai";
-
-const llm = new ChatOpenAI({
-    configuration: {
-        baseURL: process.env.OPENAI_BASE_URL || "http://localhost:11434/v1",
-    },
-    model: process.env.OPENAI_MODEL_NAME || "llama3",
-    apiKey: process.env.OPENAI_API_KEY || "not-needed-for-local",
-    temperature: 0.4,
-});
+import { prisma } from "../prisma";
+import { getLLMProvider } from "@/lib/ai/provider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,11 +72,11 @@ export async function generateManagerReport(projectId: string): Promise<ManagerR
         take: 4,
     });
 
-    const velocity: SprintVelocity[] = recentSprints.map(s => {
-        const planned = s.issues.reduce((acc, i) => acc + (i.storyPoints ?? 0), 0);
+    const velocity: SprintVelocity[] = recentSprints.map((s: { issues: any[]; id: any; name: any; }) => {
+        const planned = s.issues.reduce((acc: any, i: any) => acc + (i.storyPoints ?? 0), 0);
         const completed = s.issues
-            .filter(i => i.status === "DONE")
-            .reduce((acc, i) => acc + (i.storyPoints ?? 0), 0);
+            .filter((i: { status: string; }) => i.status === "DONE")
+            .reduce((acc: any, i: any) => acc + (i.storyPoints ?? 0), 0);
         return {
             sprintId: s.id,
             sprintName: s.name,
@@ -109,7 +100,7 @@ export async function generateManagerReport(projectId: string): Promise<ManagerR
         take: 10,
     });
 
-    const blockers: BlockerItem[] = blockerIssues.map(i => ({
+    const blockers: BlockerItem[] = blockerIssues.map((i: any) => ({
         issueKey: i.key,
         title: i.title,
         priority: i.priority,
@@ -163,8 +154,9 @@ export async function generateManagerReport(projectId: string): Promise<ManagerR
 
     let executiveSummary = `Team is progressing at ${avgVelocity}% sprint completion rate with ${blockers.length} active blocker(s). ${workload.length} developers are actively working on tasks.`;
     try {
+        const llm = getLLMProvider();
         const resp = await llm.invoke(execPrompt);
-        executiveSummary = resp.content as string;
+        executiveSummary = typeof resp.content === "string" ? resp.content : executiveSummary;
     } catch {
         // keep default
     }

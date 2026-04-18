@@ -34,7 +34,8 @@ export function NotificationBell() {
     const markRead = trpc.pmNotifications.markRead.useMutation({ onSuccess: () => { refetch(); refetchCount(); } });
     const markAllRead = trpc.pmNotifications.markAllRead.useMutation({ onSuccess: () => { refetch(); refetchCount(); } });
 
-    if (!userId) return null;
+    // Removed early return to ensure position is visible
+    // if (!userId) return null;
 
     return (
         <div className="relative">

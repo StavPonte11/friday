@@ -3,7 +3,7 @@ console.log('DEBUG: Global fetch exists?', typeof fetch !== 'undefined');
 
 const { TextDecoder, TextEncoder } = require('node:util');
 const { ReadableStream, WritableStream, TransformStream } = require('node:stream/web');
-const { MessageChannel, MessagePort } = require('node:worker_threads');
+const { MessageChannel, MessagePort, BroadcastChannel } = require('node:worker_threads');
 
 global.TextDecoder = TextDecoder;
 global.TextEncoder = TextEncoder;
@@ -12,6 +12,7 @@ global.WritableStream = WritableStream;
 global.TransformStream = TransformStream;
 global.MessageChannel = MessageChannel;
 global.MessagePort = MessagePort;
+global.BroadcastChannel = BroadcastChannel;
 
 if (typeof Request === 'undefined') {
     const fetch = require('node-fetch');

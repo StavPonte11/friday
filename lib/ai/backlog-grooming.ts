@@ -9,7 +9,7 @@
  * Returns structured GroomingReport that can be rendered in the UI or sent as a manager report.
  */
 
-import prisma from "../prisma";
+import { prisma } from "../prisma";
 import { ChatOpenAI } from "@langchain/openai";
 
 const llm = new ChatOpenAI({
@@ -79,17 +79,17 @@ export async function groomBacklog(projectId: string): Promise<GroomingReport> {
     });
 
     const missingCriteria: MissingCriteriaIssue[] = issues
-        .map(i => {
+        .map((i: any) => {
             const issue = hasMissingCriteria(i);
             if (!issue) return null;
             return { issueKey: i.key, title: i.title, issue } as MissingCriteriaIssue;
         })
-        .filter((x): x is MissingCriteriaIssue => x !== null);
+        .filter((x: any): x is MissingCriteriaIssue => x !== null);
 
     const oversized: OversizedIssue[] = [];
     const OVERSIZED_THRESHOLD = 8;
 
-    for (const issue of issues.filter(i => (i.storyPoints ?? 0) > OVERSIZED_THRESHOLD)) {
+    for (const issue of issues.filter((i: { storyPoints: any; }) => (i.storyPoints ?? 0) > OVERSIZED_THRESHOLD)) {
         let splitSuggestion = "Consider splitting into 2-3 smaller tasks.";
         try {
             const resp = await llm.invoke(
@@ -111,7 +111,7 @@ export async function groomBacklog(projectId: string): Promise<GroomingReport> {
     // Duplicate detection via LLM on condensed list
     let duplicates: DuplicatePair[] = [];
     if (issues.length >= 2) {
-        const issueList = issues.map(i => `- ${i.key}: ${i.title}`).join("\n");
+        const issueList = issues.map((i: { key: any; title: any; }) => `- ${i.key}: ${i.title}`).join("\n");
         const dupPrompt =
             `You are a senior PM reviewing this backlog. Identify ONLY clearly duplicate issues (same goal/scope).\n\n` +
             `Issues:\n${issueList}\n\n` +
@@ -123,8 +123,8 @@ export async function groomBacklog(projectId: string): Promise<GroomingReport> {
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]) as { keyA: string; keyB: string; reason: string }[];
                 for (const pair of parsed) {
-                    const a = issues.find(i => i.key === pair.keyA);
-                    const b = issues.find(i => i.key === pair.keyB);
+                    const a = issues.find((i: { key: string; }) => i.key === pair.keyA);
+                    const b = issues.find((i: { key: string; }) => i.key === pair.keyB);
                     if (a && b) {
                         duplicates.push({
                             issueKeyA: a.key,

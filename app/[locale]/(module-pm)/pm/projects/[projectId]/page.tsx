@@ -5,7 +5,6 @@ import { trpc } from "@/lib/trpc/client";
 import { ArrowLeft, LayoutDashboard, ListTodo, Activity } from "lucide-react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
-import { AgentCommandBar } from "@/components/pm/AgentCommandBar";
 
 export default function ProjectDetailsPage(props: { params: Promise<{ locale: string, projectId: string }> }) {
     const { locale, projectId } = use(props.params);
@@ -84,8 +83,6 @@ export default function ProjectDetailsPage(props: { params: Promise<{ locale: st
                 </Link>
             </div>
 
-            {/* F.R.I.D.A.Y Agent Command Bar */}
-            <AgentCommandBar projectId={projectId} />
         </div>
     );
 }

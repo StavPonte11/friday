@@ -29,7 +29,7 @@ interface JiraIssue {
     };
 }
 
-function mapJiraStatus(status: string): string {
+function mapJiraStatus(status: string): any {
     const s = status.toLowerCase();
     if (s.includes("done") || s.includes("closed") || s.includes("resolved")) return "DONE";
     if (s.includes("in progress") || s.includes("in-progress")) return "IN_PROGRESS";

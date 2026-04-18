@@ -4,5 +4,11 @@
     },
     "Shell": {
         "loading": "Loading..."
+    },
+    "pm": {
+        "metadata": {
+            "title": "F.R.I.D.A.Y PM",
+            "description": "Project Management by F.R.I.D.A.Y"
+        }
     }
 }

@@ -32,9 +32,9 @@ export function CommandPalette({ projectId }: CommandPaletteProps) {
     const locale = useLocale();
 
     // Semantic search while query is long enough
-    const { data: searchResults, isFetching: isSearching } = trpc.pmSearch.semanticSearch.useQuery(
-        { query, projectId, limit: 5 },
-        { enabled: query.trim().length >= 3, staleTime: 30_000 }
+    const { data: searchResults, isFetching: isSearching } = trpc.pmSearch.global.useQuery(
+        { query, limit: 5 },
+        { queryKey: ["pmSearch.global", { query, limit: 5 }], enabled: query.trim().length >= 3 } as any
     );
 
     // Open on CMD+K / Ctrl+K
@@ -79,10 +79,10 @@ export function CommandPalette({ projectId }: CommandPaletteProps) {
     ];
 
     // Issue results from semantic search
-    const issueCommands: CommandItem[] = (searchResults?.results ?? []).map(r => ({
+    const issueCommands: CommandItem[] = (searchResults?.issues ?? []).map((r: any) => ({
         id: r.id,
         label: `${r.key} — ${r.title}`,
-        description: `${r.project.name} · ${Math.round(r.similarity * 100)}% match`,
+        description: `Project match`,
         icon: <Hash size={15} />,
         action: () => nav(`/pm/issues/${r.id}`),
         category: "issue" as const

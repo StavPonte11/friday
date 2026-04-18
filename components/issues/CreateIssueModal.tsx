@@ -133,81 +133,9 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
 
     const [aiPrompt, setAiPrompt] = useState("");
 
-    const generateMutation = trpc.pmIssues.generate.useMutation({
-        onSuccess: (data) => {
-            (form.setValue as any)("title", data.title);
+    const generateMutation = trpc.pmIssues.generate.useMutation();
 
-            // Format description with subtasks and criteria
-            let fullDesc = data.description + "\n\n";
-            if (data.subtasks?.length) {
-                fullDesc += "### Subtasks\n" + data.subtasks.map(s => `- [ ] ${s}`).join("\n") + "\n\n";
-            }
-            if (data.criteria?.length) {
-                fullDesc += "### Acceptance Criteria\n" + data.criteria.map(c => `- ${c}`).join("\n");
-            }
-
-            (form.setValue as any)("description", fullDesc.trim());
-            setAiPrompt("");
-        }
-    });
-
-    const createMutation = trpc.pmIssues.create.useMutation({
-        onMutate: async (newIssue) => {
-            // Cancel outgoing fetches so they don't overwrite optimistic update
-            await utils.pmIssues.listByProject.cancel({ projectId });
-
-            // Snapshot previous value
-            const previousIssues = utils.pmIssues.listByProject.getData({ projectId });
-
-            // Optimistically update
-            if (previousIssues) {
-                utils.pmIssues.listByProject.setData({ projectId }, [
-                    {
-                        ...newIssue,
-                        id: `temp-${Date.now()}`,
-                        key: "FPM-??",
-                        assigneeId: newIssue.assigneeId || null,
-                        creatorId: newIssue.creatorId,
-                        storyPoints: newIssue.storyPoints || null,
-                        complexityScore: newIssue.complexityScore || null,
-                        predictedTime: null,
-                        sprintId: null,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                        assignee: null,
-                        labels: [],
-                        sprint: null,
-                        priority: (newIssue.priority as any) || PmIssuePriority.NONE,
-                        status: newIssue.status || "TODO",
-                        description: newIssue.description || null,
-                        type: "TASK",
-                        customFields: null,
-                        parentId: null,
-                        parent: null,
-                        children: [],
-                    } as any,
-                    ...previousIssues,
-                ]);
-            }
-
-            return { previousIssues };
-        },
-        onError: (err, newIssue, context) => {
-            // Rollback on error
-            if (context?.previousIssues) {
-                utils.pmIssues.listByProject.setData({ projectId }, context.previousIssues);
-            }
-        },
-        onSettled: () => {
-            // Sync with server once mutation settles
-            utils.pmIssues.listByProject.invalidate({ projectId });
-        },
-        onSuccess: () => {
-            setOpen(false);
-            form.reset();
-            onSuccess?.();
-        },
-    });
+    const createMutation = trpc.pmIssues.create.useMutation();
 
     function onSubmit(values: z.infer<typeof formSchema>) {
         const userId = (session?.user as any)?.id || "";
@@ -218,8 +146,39 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
             creatorId: userId,
             assigneeId: values.assigneeId === "unassigned" ? null : (values.assigneeId || null),
             checklistItems: checklistItems.length > 0 ? checklistItems : undefined,
+        }, {
+            onSuccess: () => {
+                setOpen(false);
+                form.reset();
+                utils.pmIssues.listByProject.invalidate({ projectId });
+                onSuccess?.();
+            },
+            onError: () => {
+                utils.pmIssues.listByProject.invalidate({ projectId });
+            }
         });
     }
+
+    const handleGenerate = () => {
+        if (!aiPrompt) return;
+        generateMutation.mutate({ prompt: aiPrompt }, {
+            onSuccess: (data: any) => {
+                (form.setValue as any)("title", data.title);
+
+                // Format description with subtasks and criteria
+                let fullDesc = data.description + "\n\n";
+                if (data.subtasks?.length) {
+                    fullDesc += "### Subtasks\n" + data.subtasks.map((s: any) => `- [ ] ${s}`).join("\n") + "\n\n";
+                }
+                if (data.criteria?.length) {
+                    fullDesc += "### Acceptance Criteria\n" + data.criteria.map((c: any) => `- ${c}`).join("\n");
+                }
+
+                (form.setValue as any)("description", fullDesc.trim());
+                setAiPrompt("");
+            }
+        });
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -253,7 +212,7 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => generateMutation.mutate({ prompt: aiPrompt })}
+                                        onClick={handleGenerate}
                                         disabled={!aiPrompt || generateMutation.isPending}
                                         className="px-3 bg-secondary text-secondary-foreground rounded-md text-xs font-semibold hover:bg-secondary/80 disabled:opacity-50 min-w-[80px]"
                                     >

@@ -3,7 +3,7 @@
  * Single source of truth for all env-driven settings.
  */
 
-const env = process.env.NODE_ENV ?? 'development';
+const env = (process.env.NODE_ENV as string) ?? 'development';
 
 export const config = {
     // Environment

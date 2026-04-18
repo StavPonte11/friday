@@ -1,4 +1,4 @@
-import prisma from "./lib/prisma";
+import { prisma } from "./lib/prisma";
 import { appRouter } from "./lib/trpc/server";
 import {   PmIssuePriority } from "@prisma/client";
 

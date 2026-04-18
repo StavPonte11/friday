@@ -18,7 +18,7 @@ interface ProjectWorkflowEditorProps {
 
 export function ProjectWorkflowEditor({ projectId }: ProjectWorkflowEditorProps) {
     const utils = trpc.useUtils();
-    const { data: project, isLoading } = trpc.pmProjects.list.useQuery(); 
+    const { data: project, isLoading } = trpc.pmProjects.list.useQuery(undefined); 
     // Usually we should have a getById for projects too, but list returns them all for now.
     
     const currentProject = project?.find((p: any) => p.id === projectId);
@@ -32,11 +32,7 @@ export function ProjectWorkflowEditor({ projectId }: ProjectWorkflowEditorProps)
         ];
     });
 
-    const updateWorkflow = trpc.pmProjects.updateWorkflow.useMutation({
-        onSuccess: () => {
-            utils.pmProjects.list.invalidate();
-        }
-    });
+    const updateWorkflow = trpc.pmProjects.updateWorkflow.useMutation();
 
     const handleAddColumn = () => {
         const id = `col-${Date.now()}`;
@@ -55,6 +51,10 @@ export function ProjectWorkflowEditor({ projectId }: ProjectWorkflowEditorProps)
         updateWorkflow.mutate({
             id: projectId,
             workflow: { columns }
+        }, {
+            onSuccess: () => {
+                utils.pmProjects.list.invalidate();
+            }
         });
     };
 

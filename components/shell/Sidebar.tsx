@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ModuleSwitcher } from "@/components/shell/ModuleSwitcher";
 import { NotificationCenter } from "@/components/shell/NotificationCenter";
 import { UserMenu } from "@/components/shell/UserMenu";
-import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText, Brain, CalendarRange, Plug } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -21,8 +21,11 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const pmNavItems = [
         { href: "/en/pm/issues", label: "Issues", icon: ListOrdered },
         { href: "/en/pm/board", label: "Board", icon: LayoutDashboard },
+        { href: "/en/pm/timeline", label: "Timeline", icon: CalendarRange },
         { href: "/en/pm/analytics", label: "Analytics", icon: BarChart2 },
+        { href: "/en/pm/intelligence", label: "Intelligence", icon: Brain },
         { href: "/en/pm/reports", label: "Reports", icon: FileText },
+        { href: "/en/pm/settings/integrations", label: "Integrations", icon: Plug },
     ];
 
     const isPmModule = pathname?.includes("/pm/");

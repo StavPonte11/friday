@@ -1,8 +1,10 @@
 import { fetchLangfuseAPI } from "./langfuse";
 
 // Naming convention parser: `{prefix}/{branch-slug}--{prompt-name}`
+// Branch slug may contain hyphens. The double-dash `--` is the separator.
 export function parsePromptName(featurePromptName: string): string | null {
-    const match = featurePromptName.match(/^[^\/]+\/[^\-]+--(.+)$/);
+    // Use a lazy quantifier `.+?` so it stops at the FIRST `--` occurrence
+    const match = featurePromptName.match(/^[^/]+\/.+?--(.+)$/);
     if (match && match[1]) {
         return match[1];
     }

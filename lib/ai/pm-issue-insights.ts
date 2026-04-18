@@ -1,5 +1,5 @@
-import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
+import { getLLMProvider } from "@/lib/ai/provider";
 
 export const issueInsightsSchema = z.object({
     complexityScore: z.number().min(1).max(10).describe("Estimated complexity / story points from 1 to 10. 1 is trivial, 10 is an epic-level task."),
@@ -10,10 +10,7 @@ export const issueInsightsSchema = z.object({
 export type IssueInsights = z.infer<typeof issueInsightsSchema>;
 
 export async function generateIssueInsights(title: string, description: string | null): Promise<IssueInsights> {
-    const llm = new ChatOpenAI({
-        modelName: "gpt-4o-mini", // fast and cheap for reasoning
-        temperature: 0.1,
-    }).withStructuredOutput(issueInsightsSchema, { name: "IssueInsights" });
+    const llm = getLLMProvider().withStructuredOutput(issueInsightsSchema, { name: "IssueInsights" });
 
     const prompt = `Analyze the following engineering issue and provide complexity, time, and skill insights.
 
@@ -29,3 +26,4 @@ ${description || "No description provided."}
 
     return result as IssueInsights;
 }
+

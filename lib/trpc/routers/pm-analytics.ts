@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../init";
-import prisma from "../../prisma";
+import { prisma } from "../../prisma";
 
 export const pmAnalyticsRouter = router({
     /**
@@ -160,11 +160,11 @@ export const pmAnalyticsRouter = router({
             if (!sprint) return null;
 
             const totalIssues = sprint.issues.length;
-            const completedIssues = sprint.issues.filter(i => i.status === "DONE").length;
+            const completedIssues = sprint.issues.filter((i: any) => i.status === "DONE").length;
             const completionRate = totalIssues > 0 ? (completedIssues / totalIssues) * 100 : 0;
 
             // Scope creep: issues added after sprint start
-            const addedAfterStart = sprint.issues.filter(i => 
+            const addedAfterStart = sprint.issues.filter((i: any) => 
                 sprint.startDate && i.createdAt > sprint.startDate
             ).length;
             const scopeCreep = totalIssues > 0 ? (addedAfterStart / totalIssues) * 100 : 0;

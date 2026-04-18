@@ -1,4 +1,4 @@
-import prisma from "../prisma";
+import { prisma } from "../prisma";
 /**
  * Friday PM AI Inner Agent
  * LangGraph-based agent connected to local Ollama + LangFuse tracing.
@@ -103,7 +103,7 @@ const detectDuplicatesTool = tool(
 New issue title: "${newTitle}"
 
 Existing issues:
-${issues.map((i) => `- ${i.key}: ${i.title}`).join("\n")}
+${issues.map((i: { key: any; title: any; }) => `- ${i.key}: ${i.title}`).join("\n")}
 
 List any issues that are likely duplicates (same intent/scope). If none, say "No duplicates found."
 Format: "Potential duplicates: FPM-X, FPM-Y" or "No duplicates found."`;
@@ -166,7 +166,7 @@ const autoPrioritizeBacklogTool = tool(
 
         const prompt = `You are an agile product manager. Prioritize this backlog (highest value, lowest effort first).
 Issues:
-${issues.map((i) => `- ${i.key}: "${i.title}" (${i.storyPoints ?? "?"}pts, current priority: ${i.priority})`).join("\n")}
+${issues.map((i: { key: any; title: any; storyPoints: any; priority: any; }) => `- ${i.key}: "${i.title}" (${i.storyPoints ?? "?"}pts, current priority: ${i.priority})`).join("\n")}
 
 Return a prioritized list as: "1. FPM-X — reason\n2. FPM-Y — reason..."`;
 

@@ -41,24 +41,15 @@ export default function ProjectsPage() {
     const [configProjectId, setConfigProjectId] = useState<string | null>(null);
 
     // Fetch the first available workspace — replaces the hardcoded MOCK id
-    const { data: workspaces, isLoading: wsLoading } = trpc.workspaces.list.useQuery();
+    const { data: workspaces, isLoading: wsLoading } = trpc.workspaces.list.useQuery(undefined);
     const workspaceId = workspaces?.[0]?.id ?? null;
 
     const utils = trpc.useUtils();
 
     const { data: projects, isLoading: projectsLoading } =
-        trpc.pmProjects.list.useQuery();
+        trpc.pmProjects.list.useQuery(undefined);
 
-    const createProject = trpc.pmProjects.create.useMutation({
-        onSuccess: () => {
-            // Invalidate cache so the new project appears immediately
-            utils.pmProjects.list.invalidate();
-            closeModal();
-        },
-        onError: (err) => {
-            setFormError(err.message || "Failed to create project.");
-        },
-    });
+    const createProject = trpc.pmProjects.create.useMutation();
 
     const isLoading = wsLoading || projectsLoading;
 
@@ -92,7 +83,15 @@ export default function ProjectsPage() {
         if (!name.trim()) { setFormError("Project name is required."); return; }
         if (key.length < 2) { setFormError("Key must be at least 2 characters."); return; }
         if (!workspaceId) { setFormError("No workspace found. Please create a workspace first."); return; }
-        createProject.mutate({ workspaceId, name: name.trim(), key, description: description.trim() || undefined });
+        createProject.mutate({ workspaceId, name: name.trim(), key, description: description.trim() || undefined }, {
+            onSuccess: () => {
+                utils.pmProjects.list.invalidate();
+                closeModal();
+            },
+            onError: (err: any) => {
+                setFormError(err.message || "Failed to create project.");
+            }
+        });
     }
 
     return (

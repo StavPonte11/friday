@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma";
+import { prisma } from "../lib/prisma";
 /**
  * FRIDAY PM — Large Dataset Generator
  * Generates configurable volumes of test data for stress testing.
@@ -67,7 +67,6 @@ const PRIORITIES: PmIssuePriority[] = [
 const STATUSES: string[] = [
     "BACKLOG",
     "TODO",
-    PmIssuePriority.NONE as unknown as  // placeholder fixed below
     "IN_PROGRESS",
     "IN_REVIEW",
     "DONE",
@@ -193,13 +192,13 @@ async function main(): Promise<void> {
 
             await prisma.pmIssue.upsert({
                 where: { key: issueKey },
-                update: { status },
+                update: { status: status as any },
                 create: {
                     key: issueKey,
                     projectId: project.id,
                     title,
                     description: `Auto-generated issue: ${title}. Requires investigation and implementation by the engineering team.`,
-                    status,
+                    status: status as any,
                     priority,
                     storyPoints: randomInt(1, 13),
                     complexityScore: randomInt(1, 10),

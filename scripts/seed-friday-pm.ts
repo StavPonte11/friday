@@ -5,10 +5,8 @@
  * Run with:  npx tsx scripts/seed-friday-pm.ts
  */
 
-import { config } from "dotenv";
-config({ path: ".env" });
-
-import prisma from "../lib/prisma";
+import "dotenv/config";
+import { prisma } from "../lib/prisma";
 
 import { PmIssuePriority } from "@prisma/client";
 import { Langfuse } from "langfuse";
@@ -335,13 +333,13 @@ async function main(): Promise<void> {
 
             await prisma.pmIssue.upsert({
                 where: { key: issueKey },
-                update: { status, sprintId },
+                update: { status: status as any, sprintId },
                 create: {
                     key: issueKey,
                     projectId: project.id,
                     title: issue.title,
                     description: issue.description,
-                    status,
+                    status: status as any,
                     priority: issue.priority,
                     storyPoints: issue.storyPoints,
                     complexityScore: issue.complexityScore,

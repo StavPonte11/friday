@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Search, ChevronRight, Sparkles, Command } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
-import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 
 const DOC_PAGES = [
@@ -23,7 +22,7 @@ export function DocsHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const locale = useLocale();
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
 
   // Determine current page from pathname
   const currentSlug = pathname.split("/").pop();
@@ -37,7 +36,6 @@ export function DocsHeader() {
     : [];
 
   const handleNav = (slug: string) => {
-    trackEvent("docs.click", { slug } as any);
     router.push(`/${locale}/docs/${slug}`);
     setQuery("");
     setIsOpen(false);
@@ -72,7 +70,6 @@ export function DocsHeader() {
             onChange={e => { 
                 setQuery(e.target.value); 
                 setIsOpen(true); 
-                if (e.target.value.length > 2) trackEvent("docs.search", { query: e.target.value } as any); 
             }}
             onFocus={() => setIsOpen(true)}
             onBlur={() => setTimeout(() => setIsOpen(false), 150)}

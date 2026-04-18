@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCorners, useDraggable, useDroppable, useSensors, useSensor, PointerSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useLocale } from "next-intl";
 import { useEffect, useState } from "react";
@@ -164,6 +164,14 @@ export default function KanbanBoardPage() {
         }
     };
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        })
+    );
+
     return (
         <div className="h-full flex flex-col pt-6 pb-0 overflow-hidden w-full mx-auto space-y-4">
             <div className="px-6 flex items-start justify-between">
@@ -195,7 +203,7 @@ export default function KanbanBoardPage() {
                 </div>
             </div>
 
-            <DndContext collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="flex-1 overflow-x-auto flex gap-6 px-6 pb-6">
                     {/* Render columns using Droppable component */}
                     {activeColumns.map((column: any) => (

@@ -36,7 +36,7 @@ const NAV_GROUPS = [
 ];
 
 export function DocsSidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const locale = useLocale();
 
   return (

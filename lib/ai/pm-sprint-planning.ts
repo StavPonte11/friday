@@ -9,14 +9,13 @@ export const sprintPlanSchema = z.object({
 
 export type SprintPlan = z.infer<typeof sprintPlanSchema>;
 
+import { getLLMProvider } from "@/lib/ai/provider";
+
 export async function generateSprintPlan(
     backlog: { id: string; title: string; complexityScore: number | null; priority: string }[],
     targetVelocity: number
 ): Promise<SprintPlan> {
-    const llm = new ChatOpenAI({
-        modelName: "gpt-4o",
-        temperature: 0.1,
-    }).withStructuredOutput(sprintPlanSchema, { name: "SprintPlan" });
+    const llm = getLLMProvider().withStructuredOutput(sprintPlanSchema, { name: "SprintPlan" });
 
     const prompt = `You are an expert Agile Scrum Master. Given the following backlog of issues and a target team velocity of ${targetVelocity} points, recommend an optimal sprint plan.
 Prioritize 'HIGH' and 'URGENT' issues. Maximize the value delivered without exceeding the target velocity by more than 10%.

@@ -26,6 +26,7 @@ export function RichTextEditor({
             Placeholder.configure({ placeholder, emptyEditorClass: 'is-editor-empty' })
         ],
         content: value,
+        immediatelyRender: false,
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML());
         },

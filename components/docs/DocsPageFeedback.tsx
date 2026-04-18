@@ -1,8 +1,6 @@
 "use client";
 import { useState } from "react";
 import { ThumbsUp, ThumbsDown, Send, MessageSquareHeart } from "lucide-react";
-import { trpc } from "@/lib/trpc/client";
-import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 
 export function DocsPageFeedback({ page }: { page: string }) {
@@ -10,28 +8,16 @@ export function DocsPageFeedback({ page }: { page: string }) {
   const [comment, setComment] = useState("");
   const [showComment, setShowComment] = useState(false);
 
-  const submitFeedback = trpc.pmFeedback.submit.useMutation();
-
   const handleVote = (helpful: boolean) => {
     setSubmitted(helpful);
     if (!helpful) setShowComment(true);
-    trackEvent("docs.click", { page, helpful: String(helpful) } as any);
     if (helpful) {
-      submitFeedback.mutate({
-        type: "other",
-        message: `Docs page "${page}" marked helpful`,
-        page,
-      });
+      setTimeout(() => setSubmitted(null), 3000);
     }
   };
 
   const handleSubmitComment = () => {
     if (!comment.trim()) return;
-    submitFeedback.mutate({
-      type: "other",
-      message: comment || `Docs page "${page}" marked unhelpful`,
-      page,
-    });
     setShowComment(false);
   };
 
@@ -78,9 +64,7 @@ export function DocsPageFeedback({ page }: { page: string }) {
               className="w-full px-4 py-3 text-sm bg-background/50 border border-border/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none h-24 placeholder:text-muted-foreground"
             />
             <Button
-              onClick={handleSubmitComment}
-              disabled={!comment.trim() || submitFeedback.isPending}
-              className="rounded-xl self-end"
+              disabled={!comment.trim()}
             >
               <Send size={14} className="mr-2" /> Send Feedback
             </Button>

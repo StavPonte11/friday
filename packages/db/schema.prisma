@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../../node_modules/.prisma/client"
+  provider        = "prisma-client-js"
+  output          = "../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -26,6 +26,7 @@ model User {
   workspaceMembers WorkspaceMember[]
   apiKeys          ApiKey[]
   auditLogs        AuditLog[]        @relation("UserAuditLogs")
+  integrations     Integration[]     @relation("UserIntegrations")
 
   // PM Module opposite relations
   assignedIssues   PmIssue[]         @relation("IssueAssignee")
@@ -60,6 +61,7 @@ model Workspace {
   modules   WorkspaceModule[]
   apiKeys   ApiKey[]
   auditLogs AuditLog[]
+  integrations Integration[] @relation("WorkspaceIntegrations")
 
   // PM Module opposite relations
   pmTeams    PmTeam[]
@@ -133,6 +135,30 @@ model AuditLog {
 
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User?      @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// -----------------------------------------------------------------------------
+// Integrations & Webhooks
+// -----------------------------------------------------------------------------
+
+model Integration {
+  id            String   @id @default(cuid())
+  userId        String?  // Can be user-specific (e.g. personal calendar)
+  workspaceId   String?  // Or workspace-specific (e.g. Jira import for whole workspace)
+  type          String   // "calendar", "git", "pm", "design"
+  provider      String   // "google", "outlook", "github", "gitlab", "jira", "figma"
+  accessToken   String   // encrypted
+  refreshToken  String?  // encrypted
+  metadata      Json?    // to store external IDs, custom sync states, webhook URLs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User?      @relation("UserIntegrations", fields: [userId], references: [id], onDelete: Cascade)
+  workspace     Workspace? @relation("WorkspaceIntegrations", fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([type, provider])
 }
 
 // -----------------------------------------------------------------------------
@@ -234,6 +260,7 @@ model PmIssue {
   customFields     Json?
 
   dueDate          DateTime?
+  startDate        DateTime?
   slaPolicy        String?
   cronSchedule     String?
 

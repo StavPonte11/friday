@@ -2,19 +2,16 @@ import { use } from "react";
 import { notFound } from "next/navigation";
 import { getDocPage } from "@/lib/docs/mdx";
 import { DocsPageFeedback } from "@/components/docs/DocsPageFeedback";
-import { trackEvent } from "@/lib/analytics";
 
-export default function DocPage(props: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(props.params);
-
-  // This runs server-side — track view
-  trackEvent("docs.view", { slug } as any).catch(() => {});
+export default async function DocPage(props: { params: Promise<{ slug: string }> }) {
+  const { slug } = await props.params;
 
   let content;
   let frontmatter: { title: string; description?: string };
   try {
-    ({ content, frontmatter } = use(getDocPage(slug)));
-  } catch {
+    ({ content, frontmatter } = await getDocPage(slug));
+  } catch (error) {
+    console.error("Error loading document:", error);
     notFound();
   }
 
