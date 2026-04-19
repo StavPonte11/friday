@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { GanttItem } from "@/types/gantt";
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay } from "date-fns";
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 
 interface CalendarViewProps {
     issues: GanttItem[];
@@ -10,29 +11,56 @@ interface CalendarViewProps {
 
 export function CalendarView({ issues }: CalendarViewProps) {
     const today = new Date();
+    const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
     
-    // Simple calendar logic: display current month
-    const start = startOfMonth(today);
-    const end = endOfMonth(today);
+    // Calendar logic
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start, end });
 
-    // Group issues by dueDate
+    // Group issues by dates they cover
     const issuesByDate = useMemo(() => {
         const map = new Map<string, GanttItem[]>();
         issues.forEach(issue => {
-            if (issue.dueDate) {
-                const dateKey = format(new Date(issue.dueDate), "yyyy-MM-dd");
-                const list = map.get(dateKey) || [];
-                list.push(issue);
-                map.set(dateKey, list);
+            // Unify with Gantt logic: use start/end
+            let issueStart = issue.start ? new Date(issue.start) : new Date(issue.createdAt || today);
+            let issueEnd = issue.end ? new Date(issue.end) : new Date(issueStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+            
+            // To prevent rendering over too many days, we just put it on start and end
+            // Or better, we could fill every day but that could overload UI. 
+            // We'll place it on all days in interval to match Gantt accurately!
+            if (issueStart < start) issueStart = start; // clamp for this view
+            if (issueEnd > end) issueEnd = end;
+            
+            if (issueStart <= issueEnd) {
+                 const interval = eachDayOfInterval({ start: issueStart, end: issueEnd });
+                 interval.forEach(day => {
+                     const dateKey = format(day, "yyyy-MM-dd");
+                     const list = map.get(dateKey) || [];
+                     // prevent duplicates just in case
+                     if (!list.find(i => i.id === issue.id)) {
+                         list.push(issue);
+                     }
+                     map.set(dateKey, list);
+                 });
             }
         });
         return map;
-    }, [issues]);
+    }, [issues, start, end]);
 
     return (
         <div className="h-full w-full overflow-auto p-6 flex flex-col">
-            <h3 className="text-lg font-bold mb-4">{format(today, "MMMM yyyy")}</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-primary" />
+                    {format(currentMonth, "MMMM yyyy")}
+                </h3>
+                <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                    <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 hover:bg-background rounded-md transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+                    <button onClick={() => setCurrentMonth(startOfMonth(today))} className="px-3 py-1.5 text-sm hover:bg-background rounded-md transition-colors font-medium">Today</button>
+                    <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 hover:bg-background rounded-md transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                </div>
+            </div>
             
             <div className="grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden border border-border flex-1 min-h-[600px]">
                 {/* Weekday Headers */}
@@ -68,7 +96,7 @@ export function CalendarView({ issues }: CalendarViewProps) {
                                 {dayIssues.map(issue => (
                                     <div 
                                         key={issue.id} 
-                                        className={`text-xs p-1.5 rounded border border-border/50 truncate cursor-pointer shadow-sm
+                                        className={`text-[10px] p-1 rounded border border-border/50 truncate cursor-pointer shadow-sm
                                             ${issue.status === 'DONE' ? 'bg-green-500/10 text-green-700 border-green-500/20' : 
                                               issue.status === 'BLOCKED' ? 'bg-red-500/10 text-red-700 border-red-500/20' : 
                                               'bg-background hover:border-primary/50 text-foreground'}`

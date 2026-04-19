@@ -12,16 +12,21 @@ export const aiIssueSchema = z.object({
 
 export type GeneratedIssue = z.infer<typeof aiIssueSchema>;
 
+import { getLLMProvider } from "@/lib/ai/provider";
+
 export async function generateIssueFromPrompt(prompt: string): Promise<GeneratedIssue> {
-    const llm = new ChatOpenAI({
-        modelName: "gpt-4o",
-        temperature: 0.2,
-    }).withStructuredOutput(aiIssueSchema, { name: "GeneratedIssue" });
+    const llm = getLLMProvider().withStructuredOutput(aiIssueSchema, { name: "GeneratedIssue", method: "jsonMode" });
+    try {
+        const result = await llm.invoke([
+            ["system", "You are an expert technical product manager. Your job is to take raw user ideas and convert them into well-structured, actionable engineering issues suitable for Jira or Linear. You MUST reply with valid JSON only matching the schema: { title: string, description: string, subtasks: string[], criteria: string[], complexity: number, labels: string[] }"],
+            ["human", prompt]
+        ]);
 
-    const result = await llm.invoke([
-        ["system", "You are an expert technical product manager. Your job is to take raw user ideas and convert them into well-structured, actionable engineering issues suitable for Jira or Linear."],
-        ["human", prompt]
-    ]);
-
-    return result as GeneratedIssue;
+        return result as GeneratedIssue;
+    } catch (error: any) {
+        if (error.message?.includes("404") || error.message?.includes("not found")) {
+            throw new Error("AI Model not found on local Ollama server. Please run 'ollama pull llama3' in your terminal, or configure LLM_API_KEY in .env.");
+        }
+        throw error;
+    }
 }

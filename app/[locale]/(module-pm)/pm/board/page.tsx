@@ -231,7 +231,7 @@ export default function KanbanBoardPage() {
             </DndContext>
 
             <Dialog open={!!selectedIssueIdForEdit} onOpenChange={(open) => !open && setSelectedIssueIdForEdit(null)}>
-                <DialogContent className="max-w-4xl h-[85vh] p-0 overflow-hidden flex flex-col">
+                <DialogContent className="max-w-7xl h-[95vh] p-0 overflow-hidden flex flex-col">
                     <DialogTitle className="sr-only">Issue Editor</DialogTitle>
                     {selectedIssueIdForEdit && (
                         <IssueEditor issueId={selectedIssueIdForEdit} projectId={selectedProjectId} />

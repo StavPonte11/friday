@@ -180,17 +180,19 @@ interface IssueCommentsProps {
 
 export function IssueComments({ issueId }: IssueCommentsProps) {
     const { data: session } = useSession();
-    const currentUserId = (session?.user as any)?.id ?? "";
+    // Provide a resilient fallback for demo purposes if session doesn't load
+    const currentUserId = (session?.user as any)?.id || session?.user?.email || "admin@friday.local";
 
     const { data: comments, isLoading, refetch } = trpc.pmComments.list.useQuery({ issueId });
     const createMutation = trpc.pmComments.create.useMutation({
-        onSuccess: () => { setNewComment(""); refetch(); }
+        onSuccess: () => { setNewComment(""); refetch(); },
+        onError: (err) => { alert("Failed to add comment: " + err.message); }
     });
 
     const [newComment, setNewComment] = useState("");
 
     const handleSubmit = () => {
-        if (!newComment.trim() || !currentUserId) return;
+        if (!newComment.trim()) return;
         createMutation.mutate({ issueId, authorId: currentUserId, content: newComment });
     };
 

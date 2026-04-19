@@ -14,24 +14,9 @@ export function PresenceIndicator({ room }: { room: string }) {
     const [viewers, setViewers] = useState<Viewer[]>([]);
 
     useEffect(() => {
-        const socket = io(process.env.NEXT_PUBLIC_SITE_URL || "", { path: "/api/socket/io" });
-        
-        socket.on("connect", () => {
-             // Let's assume we mock session userId for now
-             socket.emit("join-room", { room, name: "Current User" });
-             
-             const interval = setInterval(() => {
-                 socket.emit("heartbeat", { room });
-             }, 30000);
-             
-             return () => clearInterval(interval);
-        });
-        
-        socket.on("presence-list", (list: Viewer[]) => {
-            setViewers(list);
-        });
-        
-        return () => { socket.disconnect(); };
+        // Socket.io feature disabled for now as custom server is not configured natively.
+        // Prevents endless 404 polling loops.
+        // TODO: Implement Supabase Realtime or custom Socket server.
     }, [room]);
 
     if (viewers.length <= 1) return null;

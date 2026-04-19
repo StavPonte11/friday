@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { FileText, Sparkles, Loader2, Download, Activity, CheckCircle2, AlertTriangle, Building } from "lucide-react";
 import { ChatOpenAI } from "@langchain/openai";
+import ReactMarkdown from "react-markdown";
 
 // Sprint health calculation from velocity and cycle time distribution
 function computeSprintHealthScore(completed: number, committed: number, avgCycleTime: number): { score: number; label: string; color: string } {
@@ -202,7 +203,9 @@ The team completed **${sprintStats.completed} of ${sprintStats.committed} story 
                 </div>
             ) : (
                 <div className="bg-card border border-border rounded-xl p-6">
-                    <pre className="whitespace-pre-wrap text-sm leading-relaxed font-mono text-foreground/90">{report}</pre>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{report}</ReactMarkdown>
+                    </div>
                     <div className="mt-6 pt-4 border-t border-border flex gap-3">
                         <button
                             onClick={() => { setReport(null); }}

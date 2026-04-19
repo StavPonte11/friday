@@ -15,7 +15,7 @@ export async function generateSprintPlan(
     backlog: { id: string; title: string; complexityScore: number | null; priority: string }[],
     targetVelocity: number
 ): Promise<SprintPlan> {
-    const llm = getLLMProvider().withStructuredOutput(sprintPlanSchema, { name: "SprintPlan" });
+    const llm = getLLMProvider().withStructuredOutput(sprintPlanSchema, { name: "SprintPlan", method: "jsonMode" });
 
     const prompt = `You are an expert Agile Scrum Master. Given the following backlog of issues and a target team velocity of ${targetVelocity} points, recommend an optimal sprint plan.
 Prioritize 'HIGH' and 'URGENT' issues. Maximize the value delivered without exceeding the target velocity by more than 10%.
@@ -25,10 +25,16 @@ Backlog:
 ${JSON.stringify(backlog, null, 2)}
 `;
 
-    const result = await llm.invoke([
-        ["system", "Recommend a realistic sprint plan by selecting an optimal subset of the provided backlog issues."],
-        ["human", prompt]
-    ]);
-
-    return result as SprintPlan;
+    try {
+        const result = await llm.invoke([
+            ["system", "Recommend a realistic sprint plan by selecting an optimal subset of the provided backlog issues. You MUST return ONLY valid JSON matching this schema: { recommendedIssueIds: string[], reasoning: string, estimatedVelocity: number }"],
+            ["human", prompt]
+        ]);
+        return result as SprintPlan;
+    } catch (error: any) {
+        if (error.message?.includes("404") || error.message?.includes("not found")) {
+            throw new Error("AI Model not found on local Ollama server. Please run 'ollama pull llama3' in your terminal, or configure LLM_API_KEY in .env.");
+        }
+        throw error;
+    }
 }

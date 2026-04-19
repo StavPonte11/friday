@@ -23,6 +23,9 @@ export function ProjectWorkflowEditor({ projectId }: ProjectWorkflowEditorProps)
     
     const currentProject = project?.find((p: any) => p.id === projectId);
     
+    // Drag state
+    const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
     const [columns, setColumns] = useState<Column[]>(() => {
         const workflow = (currentProject?.workflow as any);
         return workflow?.columns || [
@@ -45,6 +48,35 @@ export function ProjectWorkflowEditor({ projectId }: ProjectWorkflowEditorProps)
 
     const handleTitleChange = (id: string, title: string) => {
         setColumns(columns.map(c => c.id === id ? { ...c, title } : c));
+    };
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedIdx(index);
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/html", e.currentTarget.parentNode as any);
+        e.dataTransfer.setDragImage(e.currentTarget as any, 20, 20);
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        const draggedOverItem = columns[index];
+        
+        if (draggedIdx === null || draggedIdx === index) {
+            return;
+        }
+
+        // reorder array
+        const items = [...columns];
+        const draggedItem = items[draggedIdx];
+        items.splice(draggedIdx, 1);
+        items.splice(index, 0, draggedItem);
+        
+        setDraggedIdx(index);
+        setColumns(items);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIdx(null);
     };
 
     const handleSave = () => {
@@ -76,8 +108,19 @@ export function ProjectWorkflowEditor({ projectId }: ProjectWorkflowEditorProps)
             <CardContent className="space-y-6">
                 <div className="space-y-3">
                     {columns.map((column, index) => (
-                        <div key={column.id} className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg border border-border group">
-                            <GripVertical className="text-muted-foreground w-4 h-4 cursor-grab" />
+                        <div 
+                            key={column.id} 
+                            className={`flex items-center gap-3 bg-muted/30 p-3 rounded-lg border border-border group ${draggedIdx === index ? 'opacity-50' : ''}`}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                        >
+                            <div 
+                                draggable 
+                                onDragStart={(e) => handleDragStart(e, index)} 
+                                onDragEnd={handleDragEnd}
+                                className="cursor-grab active:cursor-grabbing p-1"
+                            >
+                                <GripVertical className="text-muted-foreground w-4 h-4" />
+                            </div>
                             <div className="font-mono text-[10px] bg-muted px-2 py-1 rounded text-muted-foreground">
                                 {column.id}
                             </div>

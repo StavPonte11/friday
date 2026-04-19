@@ -47,7 +47,15 @@ export const pmAttachmentsRouter = router({
             mimeType: z.string(),
         }))
         .mutation(async ({ input }) => {
-            return prisma.pmAttachment.create({ data: input });
+            let uploader = await prisma.user.findUnique({ where: { id: input.uploaderId } });
+            if (!uploader && input.uploaderId.includes("@")) {
+                uploader = await prisma.user.findUnique({ where: { email: input.uploaderId } });
+            }
+            if (!uploader) throw new Error(`Uploader not found: ${input.uploaderId}`);
+            
+            return prisma.pmAttachment.create({ 
+                data: { ...input, uploaderId: uploader.id } 
+            });
         }),
 
     /**

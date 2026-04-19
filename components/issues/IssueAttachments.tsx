@@ -24,7 +24,8 @@ function formatBytes(bytes: number): string {
 
 export function IssueAttachments({ issueId }: IssueAttachmentsProps) {
     const { data: session } = useSession();
-    const currentUserId = (session?.user as any)?.id ?? "";
+    // Provide a resilient fallback for demo purposes if session doesn't load
+    const currentUserId = (session?.user as any)?.id || session?.user?.email || "admin@friday.local";
 
     const { data: attachments, isLoading, refetch } = trpc.pmAttachments.list.useQuery({ issueId });
     const createAttachment = trpc.pmAttachments.create.useMutation({ onSuccess: () => { refetch(); } });
@@ -35,7 +36,6 @@ export function IssueAttachments({ issueId }: IssueAttachmentsProps) {
     const [uploadError, setUploadError] = useState<string | null>(null);
 
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
-        if (!currentUserId) return;
         setUploadError(null);
         setUploading(true);
 

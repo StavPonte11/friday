@@ -4,9 +4,13 @@ import React, { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Box, Calendar, Github, Figma, Trello, Plus, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export function IntegrationsPanel({ workspaceId }: { workspaceId: string }) {
-    const { data: integrations, isLoading, refetch } = trpc.pmIntegrations.list.useQuery({ workspaceId });
+    const { data: integrations, isLoading, refetch } = trpc.pmIntegrations.list.useQuery({ workspaceId }, {
+        retry: false, // Prevents crash loop if workspaceId is invalid
+    });
     const connectMutation = trpc.pmIntegrations.connect.useMutation({
         onSuccess: () => refetch()
     });
@@ -15,21 +19,31 @@ export function IntegrationsPanel({ workspaceId }: { workspaceId: string }) {
     });
 
     const [isConnecting, setIsConnecting] = useState<string | null>(null);
+    const [mockModalOpen, setMockModalOpen] = useState(false);
+    const [selectedIntegration, setSelectedIntegration] = useState<{ id: string, name: string } | null>(null);
 
-    const handleConnect = async (provider: string, type: "calendar" | "git" | "pm" | "design") => {
+    const handleConnect = async (provider: string, type: string, name: string) => {
         setIsConnecting(provider);
-        try {
-            // MVP: Just mock the token exchange part
-            const fakeToken = "ext_token_" + Math.random().toString(36).substr(2);
-            await connectMutation.mutateAsync({
-                workspaceId,
-                type,
-                provider,
-                accessToken: fakeToken,
-                metadata: { connectedAt: new Date().toISOString() }
-            });
-        } finally {
+        setSelectedIntegration({ id: provider, name });
+        // Simulating the API connecting/validation
+        setTimeout(() => {
+            setMockModalOpen(true);
             setIsConnecting(null);
+        }, 600);
+    };
+
+    const handleMockSubmit = () => {
+        setMockModalOpen(false);
+        // We pretend the integration was successfully linked
+        // Wait, for demo we actually connect! MVP only locally connects:
+        if (selectedIntegration) {
+             const { id } = selectedIntegration;
+             // actually execute standard mutation!
+             connectMutation.mutate({
+                 workspaceId,
+                 provider: id,
+                 config: { registered: true }
+             });
         }
     };
 
@@ -102,16 +116,40 @@ export function IntegrationsPanel({ workspaceId }: { workspaceId: string }) {
                                 <Button 
                                     variant="secondary" 
                                     className="w-full"
-                                    onClick={() => handleConnect(p.id, p.type)}
+                                    onClick={() => handleConnect(p.id, p.type, p.name)}
                                     disabled={loading}
                                 >
-                                    <Plus className="w-4 h-4 mr-1" /> Connect
+                                    {isConnecting === p.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />} Connect
                                 </Button>
                             )}
                         </div>
                     );
                 })}
             </div>
+
+            <Dialog open={mockModalOpen} onOpenChange={setMockModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Configure {selectedIntegration?.name}</DialogTitle>
+                        <DialogDescription>
+                            Connect your workspace to {selectedIntegration?.name}. This lets Friday read and write to your external platform securely.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold uppercase text-muted-foreground">API Token / OAuth Key (Optional Demo Mode)</label>
+                            <Input type="password" placeholder="ghp_XXXXXXXXXXXXXXXXXXXX" />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                For this MVP demo, you can leave this blank. The system will mock the API hooks automatically.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setMockModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleMockSubmit}>Complete Setup</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

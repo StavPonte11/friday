@@ -53,12 +53,15 @@ export const pmCommentsRouter = router({
 
             try {
                 // Validate author exists to produce a clear error instead of a FK failure
-                const author = await prisma.user.findUnique({ where: { id: authorId } });
+                let author = await prisma.user.findUnique({ where: { id: authorId } });
+                if (!author && authorId.includes("@")) {
+                    author = await prisma.user.findUnique({ where: { email: authorId } });
+                }
                 if (!author) throw new Error(`Author not found: ${authorId}`);
 
                 // 1. Create the comment
                 const comment = await prisma.pmComment.create({
-                    data: { issueId, authorId, content, parentId },
+                    data: { issueId, authorId: author.id, content, parentId },
                     include: {
                         author: { select: { id: true, name: true, image: true } },
                         issue: { select: { key: true, title: true, projectId: true, assigneeId: true, creatorId: true } }

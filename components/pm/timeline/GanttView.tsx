@@ -15,11 +15,14 @@ export function GanttView({ issues }: GanttViewProps) {
         let maxDate = addDays(new Date(), 30); // Default to at least 30 days ahead
 
         issues.forEach(issue => {
-            if (issue.startDate && new Date(issue.startDate) < minDate) {
-                minDate = new Date(issue.startDate);
+            const startStr = issue.start || issue.createdAt;
+            const endStr = issue.end;
+            
+            if (startStr && new Date(startStr) < minDate) {
+                minDate = new Date(startStr);
             }
-            if (issue.dueDate && new Date(issue.dueDate) > maxDate) {
-                maxDate = new Date(issue.dueDate);
+            if (endStr && new Date(endStr) > maxDate) {
+                maxDate = new Date(endStr);
             }
         });
 
@@ -39,7 +42,7 @@ export function GanttView({ issues }: GanttViewProps) {
         return Array.from({ length: totalDays }).map((_, i) => addDays(startDate, i));
     }, [startDate, totalDays]);
 
-    const DAY_WIDTH = 40; // pixels per day
+    const DAY_WIDTH = 64; // pixels per day, larger for visibility
 
     // Group issues by Project
     const issuesByProject = useMemo(() => {
@@ -74,9 +77,9 @@ export function GanttView({ issues }: GanttViewProps) {
                                     ${day.getDay() === 0 || day.getDay() === 6 ? 'bg-muted/30' : ''}`}
                                 style={{ width: DAY_WIDTH }}
                             >
-                                <span className="text-[10px] text-muted-foreground uppercase">{format(day, 'EEE')}</span>
-                                <span className={`text-xs font-medium ${format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center' : ''}`}>
-                                    {format(day, 'd')}
+                                <span className="text-[10px] text-muted-foreground uppercase">{format(day, 'MMM d')}</span>
+                                <span className={`text-xs font-medium mt-0.5 ${format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'bg-primary text-primary-foreground rounded-full px-1.5 flex items-center justify-center' : ''}`}>
+                                    {format(day, 'EEE')}
                                 </span>
                             </div>
                         ))}
@@ -133,9 +136,9 @@ export function GanttView({ issues }: GanttViewProps) {
                                     
                                     {/* Item Rows */}
                                     {group.items.map(issue => {
-                                        // Calculate position and width
-                                        const issueStart = new Date(issue.startDate || issue.dueDate || new Date());
-                                        const issueEnd = new Date(issue.dueDate || issue.startDate || new Date());
+                                        // Calculate position and width by mapping GanttItem properties correctly
+                                        const issueStart = issue.start ? new Date(issue.start) : new Date(issue.createdAt || new Date());
+                                        const issueEnd = issue.end ? new Date(issue.end) : new Date(issueStart.getTime() + 14 * 24 * 60 * 60 * 1000);
 
                                         const startOffsetDays = differenceInDays(issueStart, startDate);
                                         const durationDays = Math.max(1, differenceInDays(issueEnd, issueStart) + 1);
