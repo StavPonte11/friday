@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function POST(
     req: Request,
-    { params }: { params: { provider: string } }
+    { params }: { params: Promise<{ provider: string }> }
 ) {
-    const { provider } = params;
+    const { provider } = await params;
 
     // MVP: Webhook verification and dispatching would go here
     try {

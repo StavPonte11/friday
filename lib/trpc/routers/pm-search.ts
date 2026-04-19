@@ -47,7 +47,6 @@ export const pmSearchRouter = router({
                 take: input.limit
             });
             
-            // Hydrate records
             const issueIds = recentViews.filter(r => r.entityType === 'issue').map(r => r.entityId);
             const projectIds = recentViews.filter(r => r.entityType === 'project').map(r => r.entityId);
             
@@ -62,10 +61,23 @@ export const pmSearchRouter = router({
                 }) : []
             ]);
             
-            return {
-                issues,
-                projects,
-                orderedRaw: recentViews
-            };
-        })
+            return { issues, projects, orderedRaw: recentViews };
+        }),
+
+    // Returns users matching a name/email prefix — used for @mention autocomplete
+    mentionUsers: publicProcedure
+        .input(z.object({ query: z.string(), limit: z.number().int().default(6) }))
+        .query(async ({ input }) => {
+            if (input.query.trim().length < 1) return [];
+            return prisma.user.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: input.query, mode: "insensitive" } },
+                        { email: { contains: input.query, mode: "insensitive" } },
+                    ]
+                },
+                take: input.limit,
+                select: { id: true, name: true, email: true, image: true }
+            });
+        }),
 });

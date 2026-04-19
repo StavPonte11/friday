@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import {
     AlertTriangle,
@@ -11,7 +11,10 @@ import {
     Loader2,
     CheckCircle2,
     RefreshCw,
+    Play,
+    Sparkles,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Risk, Insight } from "@/lib/ai/project-intelligence";
 
 interface IntelligencePanelProps {
@@ -31,14 +34,36 @@ const INSIGHT_ICON: Record<string, React.ReactNode> = {
     optimization: <Lightbulb className="w-4 h-4 text-amber-500 flex-shrink-0" />,
 };
 
-function RiskCard({ risk }: { risk: Risk }) {
+function RiskCard({ risk, onAction, isActioning, resolved }: {
+    risk: Risk;
+    onAction: (risk: Risk) => void;
+    isActioning: boolean;
+    resolved: boolean;
+}) {
     return (
-        <div className={`border rounded-lg p-4 space-y-2 ${SEVERITY_STYLE[risk.severity]}`}>
+        <div className={`border rounded-lg p-4 space-y-2 transition-all ${resolved ? 'opacity-50 bg-muted/20 border-green-500/30' : SEVERITY_STYLE[risk.severity]}`}>
             <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold leading-snug">{risk.title}</p>
-                <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 border ${SEVERITY_STYLE[risk.severity]}`}>
-                    {risk.severity}
-                </span>
+                <p className="text-sm font-semibold leading-snug flex items-center gap-2">
+                    {resolved && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                    {risk.title}
+                </p>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${SEVERITY_STYLE[risk.severity]}`}>
+                        {risk.severity}
+                    </span>
+                    {!resolved && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() => onAction(risk)}
+                            disabled={isActioning}
+                        >
+                            {isActioning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" fill="currentColor" />}
+                            {isActioning ? "Creating..." : "Auto-Resolve"}
+                        </Button>
+                    )}
+                </div>
             </div>
             <p className="text-xs text-muted-foreground">{risk.description}</p>
             <div className="pt-1 border-t border-current/10">
@@ -69,6 +94,37 @@ function InsightCard({ insight }: { insight: Insight }) {
 }
 
 export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProps) {
+    const [actioningRiskId, setActioningRiskId] = useState<string | null>(null);
+    const [resolvedRiskIds, setResolvedRiskIds] = useState<Set<string>>(new Set());
+    const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+
+    const createIssueMutation = trpc.pmIssues.create.useMutation();
+
+    const addToast = (message: string) => {
+        const id = Math.random().toString(36).slice(2);
+        setToasts(t => [...t, { id, message }]);
+        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+    };
+
+    const handleRiskAction = async (risk: Risk) => {
+        setActioningRiskId(risk.id);
+        try {
+            await createIssueMutation.mutateAsync({
+                projectId,
+                title: `[AI Mitigation] ${risk.title}`,
+                description: `Auto-generated mitigation task.\n\n**Risk:** ${risk.description}\n\n**Recommendation:** ${risk.recommendation}`,
+                priority: risk.severity === "high" ? "URGENT" : risk.severity === "medium" ? "HIGH" : "MEDIUM",
+                status: "TODO",
+                creatorId: "demo-user", // fallback; server performs email lookup if needed
+            });
+            setResolvedRiskIds(prev => new Set([...prev, risk.id]));
+            addToast(`✅ Mitigation task created for "${risk.title}"`);
+        } catch (e) {
+            addToast(`❌ Failed to create task. Check console.`);
+        } finally {
+            setActioningRiskId(null);
+        }
+    };
     const { data: riskReport, isLoading: isLoadingRisks, refetch: refetchRisks } = trpc.pmIntelligence.detectRisks.useQuery(
         { projectId },
         { staleTime: 5 * 60 * 1000 } // 5 min cache
@@ -182,7 +238,15 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
                             <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
                                 <ShieldAlert className="w-4 h-4" /> Detected Risks ({allRisks.length})
                             </h4>
-                            {allRisks.map(risk => <RiskCard key={risk.id} risk={risk} />)}
+                            {allRisks.map(risk => (
+                                <RiskCard
+                                    key={risk.id}
+                                    risk={risk}
+                                    onAction={handleRiskAction}
+                                    isActioning={actioningRiskId === risk.id}
+                                    resolved={resolvedRiskIds.has(risk.id)}
+                                />
+                            ))}
                         </div>
                     )}
 
@@ -203,6 +267,19 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
                     )}
                 </div>
             )}
+
+            {/* Floating toast notifications */}
+            <div className="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none">
+                {toasts.map(t => (
+                    <div
+                        key={t.id}
+                        className="flex items-center gap-2 bg-card border border-border shadow-xl rounded-xl px-4 py-3 text-sm font-medium animate-in slide-in-from-right-4 duration-300"
+                    >
+                        <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+                        {t.message}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

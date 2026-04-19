@@ -119,12 +119,25 @@ async function executeTool(name: string, args: Record<string, unknown>) {
                 creatorId: z.string(),
             }).parse(args);
 
+            // Resilient lookup for creatorId (like TRPC uses)
+            let actualCreatorId = input.creatorId;
+            if (input.creatorId.includes("@")) {
+                const user = await prisma.user.findUnique({ where: { email: input.creatorId } });
+                if (user) {
+                    actualCreatorId = user.id;
+                } else {
+                    // Create dummy user for demo if needed
+                    const mock = await prisma.user.create({ data: { email: input.creatorId, name: "Demo User" }});
+                    actualCreatorId = mock.id;
+                }
+            }
+
             const project = await prisma.pmProject.findUnique({ where: { id: input.projectId } });
             if (!project) throw new Error("Project not found");
 
             const count = await prisma.pmIssue.count({ where: { projectId: input.projectId } });
             return prisma.pmIssue.create({
-                data: { ...input, key: `${project.key}-${count + 1}` }
+                data: { ...input, creatorId: actualCreatorId, key: `${project.key}-${count + 1}` }
             });
         }
 
@@ -173,7 +186,20 @@ async function executeTool(name: string, args: Record<string, unknown>) {
                 content: z.string(),
                 authorId: z.string(),
             }).parse(args);
-            return prisma.pmComment.create({ data: input });
+
+            // Resilient lookup for authorId 
+            let actualAuthorId = input.authorId;
+            if (input.authorId.includes("@")) {
+                const user = await prisma.user.findUnique({ where: { email: input.authorId } });
+                if (user) {
+                    actualAuthorId = user.id;
+                } else {
+                    const mock = await prisma.user.create({ data: { email: input.authorId, name: "Demo User" }});
+                    actualAuthorId = mock.id;
+                }
+            }
+
+            return prisma.pmComment.create({ data: { ...input, authorId: actualAuthorId } });
         }
 
         case "pm_queryIssues": {

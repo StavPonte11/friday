@@ -1,0 +1,154 @@
+---
+title: Upcoming Features
+description: The FRIDAY product roadmap — what's coming next
+---
+
+## Overview
+
+F.R.I.D.A.Y is under active development. Below is our public product roadmap, organized by expected release window. Features marked 🔜 are in active development; features marked 📋 are planned.
+
+---
+
+## 🔜 Coming Soon
+
+### SSO & Enterprise Login
+
+Single Sign-On support for enterprise customers:
+
+- **SAML 2.0** — Compatible with Okta, Azure AD, Google Workspace IdP
+- **OIDC** — OpenID Connect support for self-hosted identity providers
+- **SCIM Provisioning** — Automatic user/group syncing from your IdP
+- **Audit Logs** — Login events, permission changes, and admin actions logged per workspace
+
+Configuration will live under **Workspace → Settings → Security → SSO**.
+
+---
+
+### Import from Jira
+
+Migrate existing projects from Jira Cloud or Jira Data Center to FRIDAY in one click:
+
+- Full issue history import (titles, descriptions, statuses, priorities)
+- Sprint and board structure preservation
+- Attachment and comment migration
+- Label → Tag mapping
+- User mapping wizard to match Jira users to FRIDAY accounts
+
+```
+Settings → Integrations → Import → Jira
+  └─ Paste your Jira Cloud domain and API token
+  └─ Select projects to import
+  └─ Review mapping → Start Import
+```
+
+Import runs as a background job with live progress reporting. Estimated time: ~5 minutes per 1,000 issues.
+
+---
+
+### Git Integration (GitHub & GitLab)
+
+Deep two-way integration with source control:
+
+| Feature | GitHub | GitLab |
+|---|---|---|
+| Link PRs / MRs to issues | ✅ | ✅ |
+| Auto-transition issues on merge | ✅ | ✅ |
+| Branch name suggestions from issue key | ✅ | ✅ |
+| Commit message parsing (`fixes PROJ-12`) | ✅ | ✅ |
+| MR / PR status shown on issue card | ✅ | ✅ |
+| CI pipeline status on issue | 📋 | 📋 |
+
+GitLab basic integration is already available under **Settings → Integrations**. Full GitHub OAuth + webhook integration is coming in the next release.
+
+---
+
+### External Calendar & Email
+
+**Calendar Sync:**
+
+- Google Calendar — export sprint milestones and issue due dates as calendar events
+- Outlook / iCal — `.ics` subscription feed auto-updating on due date changes
+- Two-way sync — mark a calendar event done → FRIDAY issue transitions to `DONE`
+
+**Email Digest:**
+
+- Daily/weekly email summaries of your assigned issues, blockers, and mentions
+- Configurable per-user under **Profile → Notification Preferences**
+- Powered by **Resend** (SMTP fallback supported)
+
+---
+
+### Figma Integration
+
+Connect design assets directly to issues:
+
+- **Embed Figma frames** inside issue descriptions — live, interactive previews
+- **Design status tracking** — link a Figma component status (Ready for Dev / In Review) to an issue status transition
+- **Change notifications** — get notified in FRIDAY when a linked Figma frame is updated
+- **Handoff comments** — sync Figma annotation comments to the FRIDAY comment thread
+
+---
+
+## 📋 On the Roadmap
+
+### Native Mobile App
+
+A React Native mobile companion app for iOS and Android:
+
+- Full board, issue creation, and commenting on mobile
+- Push notifications for @mentions and issue assignments
+- Offline-capable with conflict-resolution sync
+
+---
+
+### AI Sprint Planning
+
+Let FRIDAY's AI plan your next sprint:
+
+- Analyses historical velocity, team availability, and backlog complexity
+- Suggests an optimal sprint scope with confidence score
+- Flags issues that are too large and suggests split points
+- One-click "Accept Plan" to auto-populate the sprint
+
+---
+
+### Executive Dashboard
+
+A read-only, shareable dashboard for leadership:
+
+- Aggregate delivery predictions across all projects
+- Team utilization heatmap
+- Auto-generated weekly PDF report (powered by the Manager Report engine)
+- Public/private sharing via signed URL
+
+---
+
+### Time Tracking
+
+Built-in time logging per issue:
+
+- `⏱ Log Time` button on every issue card
+- Automatic suggestions based on work patterns
+- Sprint capacity tracking (planned vs actual hours)
+- Export to CSV for payroll / billing integration
+
+---
+
+<Callout type="note">
+  Have a feature request? Click the **Feedback** button (bottom-right corner of any page) to submit it directly. All submissions are stored and reviewed weekly by the product team.
+</Callout>
+
+---
+
+## Release Philosophy
+
+FRIDAY follows **continuous delivery**:
+
+- New features ship weekly to `main`
+- Breaking changes are announced in the changelog (accessible at `/docs/changelog`)
+- All database migrations are zero-downtime via `prisma migrate deploy`
+- LLM model upgrades are transparent — swap `OLLAMA_MODEL` in `.env.local` to try any new model
+
+---
+
+*Last updated: April 2026*

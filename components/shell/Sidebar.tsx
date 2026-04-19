@@ -1,11 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { ModuleSwitcher } from "@/components/shell/ModuleSwitcher";
 import { NotificationCenter } from "@/components/shell/NotificationCenter";
 import { UserMenu } from "@/components/shell/UserMenu";
-import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText, Brain, CalendarRange, Plug } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText, Brain, CalendarRange, Plug, Target, FolderKanban } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -19,6 +19,8 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const pathname = usePathname();
 
     const pmNavItems = [
+        { href: "/en/pm/dashboard", label: "Command Center", icon: Target },
+        { href: "/en/pm/projects", label: "Projects", icon: FolderKanban },
         { href: "/en/pm/issues", label: "Issues", icon: ListOrdered },
         { href: "/en/pm/board", label: "Board", icon: LayoutDashboard },
         { href: "/en/pm/timeline", label: "Timeline", icon: CalendarRange },
@@ -29,6 +31,10 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     ];
 
     const isPmModule = pathname?.includes("/pm/");
+
+    function openCommandPalette() {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+    }
 
     return (
         <div
@@ -54,7 +60,8 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     <nav className="space-y-1">
                         {isOpen && <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 pt-2 pb-1 tracking-wider">Project</p>}
                         {pmNavItems.map(({ href, label, icon: Icon }) => {
-                            const isActive = pathname?.includes(href.split("/").pop() || "");
+                            const segment = href.split("/").pop() ?? "";
+                            const isActive = pathname?.endsWith(segment) || pathname?.includes(`/${segment}/`);
                             return (
                                 <Link
                                     key={href}
@@ -74,9 +81,17 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             </div>
 
             <div className="p-2 border-t border-border flex flex-col gap-2">
-                <button className="flex items-center gap-2 p-2 rounded-md hover:bg-accent text-sm text-foreground">
-                    <Search size={18} className="text-muted-foreground" />
-                    {isOpen && <span>Search (Cmd+K)</span>}
+                <button
+                    onClick={openCommandPalette}
+                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent text-sm text-foreground w-full text-left"
+                >
+                    <Search size={18} className="text-muted-foreground flex-shrink-0" />
+                    {isOpen && (
+                        <span className="flex-1 flex items-center justify-between">
+                            <span>Search</span>
+                            <kbd className="text-[10px] bg-muted border border-border rounded px-1.5 py-0.5 text-muted-foreground font-mono">⌘K</kbd>
+                        </span>
+                    )}
                 </button>
                 <div className="flex items-center gap-2 p-2">
                     <NotificationCenter />

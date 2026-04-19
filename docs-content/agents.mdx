@@ -1,37 +1,149 @@
 ---
 title: Agents & MCP
-description: The Model Context Protocol implementation
+description: FRIDAY's Model Context Protocol — AI agents that act on your project data
 ---
 
 ## What are FRIDAY Agents?
 
-In traditional systems, you run scripts manually. In FRIDAY, you talk to Agents. An Agent is an LLM wrapper paired with a defined set of tools via the **Model Context Protocol (MCP)**.
+In traditional systems, you run scripts manually. In FRIDAY, you talk to Agents. An Agent is an LLM (Large Language Model) paired with a defined set of **tools** exposed via the **Model Context Protocol (MCP)**. The agent reads your intent, selects the right tools, executes them, and feeds results back into the conversation loop until the goal is achieved.
+
+---
 
 ## The ReAct Loop
 
-Our agents use the Reason-Act loop:
+```
+User → "Move all delayed tasks to the backlog"
+  ↓
+Agent (Reason): Which tasks are delayed? What does "move to backlog" mean?
+  ↓
+Agent (Act): calls pmIssues.list({ status: "IN_PROGRESS", overdue: true })
+  ↓
+Agent (Observe): receives 3 issues
+  ↓
+Agent (Act): calls pmIssues.updateStatus({ ids: [...], status: "TODO", sprintId: null })
+  ↓
+Agent (Observe): success → respond to user
+```
 
-1. **Reason:** The LLM reads your command (e.g. "Move all delayed tasks to the backlog").
-2. **Act:** It identifies an MCP tool (`moveIssue`), prepares arguments, and fires the function.
-3. **Observe:** The result of the `moveIssue` function is fed back to the LLM. It repeats until the goal is achieved.
+---
+
+## The `/api/mcp` Route
+
+FRIDAY exposes a **live MCP endpoint** at:
+
+```
+POST /api/mcp
+```
+
+This route implements the full **Model Context Protocol** — it can be connected to any MCP-compatible AI client (Claude Desktop, Cursor, or a custom agent).
+
+### Available MCP Tools
+
+| Tool | Description |
+|---|---|
+| `listProjects` | Returns all active projects with metadata |
+| `getIssues` | Fetch issues with filters (status, priority, sprint) |
+| `createIssue` | Create a new issue in a project |
+| `updateIssueStatus` | Transition an issue to a new workflow state |
+| `getSprintHealth` | Returns velocity, blockers, and confidence score |
+| `generateManagerReport` | Triggers the AI manager report generator |
+| `detectRisks` | Runs the risk detection engine for a project |
+
+### Connecting an External MCP Client
+
+To connect Claude Desktop or a custom agent to your FRIDAY instance:
+
+```json
+// claude_desktop_config.json
+{
+  "mcpServers": {
+    "friday-pm": {
+      "command": "node",
+      "args": ["-e", "require('http').get('http://localhost:3000/api/mcp')"],
+      "env": {
+        "FRIDAY_API_URL": "http://localhost:3000"
+      }
+    }
+  }
+}
+```
+
+Or send raw HTTP requests:
+
+```bash
+curl -X POST http://localhost:3000/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool": "getIssues",
+    "arguments": { "status": "BLOCKED", "limit": 10 }
+  }'
+```
 
 <Callout type="tip">
-  You can build Custom MCP Servers. If you have an internal proprietary database, write a lightweight Node.js script exposing `queryDB` via MCP, and FRIDAY Agents instantly know how to write SQL for your infra.
+  The MCP route does not require authentication in development mode. In production, attach a `Bearer` token using your FRIDAY_MCP_SECRET environment variable.
 </Callout>
 
-## The Agent Command Bar
+---
 
-Visible in the global shell `layout.tsx`, the Agent Command Bar is a floating FAB that lets you converse contextually. If you are viewing Project X, the agent injects Project X's metadata into its system prompt automatically.
+## AI Copilot (Command Center)
+
+The **Friday AI Copilot** in the Command Center is a conversational interface backed by:
+
+1. **Live project context** — blocked issues, overdue tasks, team capacity, sprint status
+2. **Your local LLM** — powered by Ollama (`llama3` by default, configurable via `OLLAMA_MODEL`)
+3. **Fallback responses** — if the LLM is unavailable, structured fallback messages are shown
+
+To change the model:
+
+```bash
+# .env.local
+OLLAMA_MODEL=mistral
+```
+
+To use an OpenAI-compatible API instead:
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o
+```
+
+---
+
+## Building Custom MCP Tools
+
+Register your own tools to extend agent capabilities:
 
 ```ts
-// Example: Registering a custom MCP tool
-import { MCP } from "@friday/mcp-core";
+// lib/ai/custom-tools.ts
+import { MCP } from "@/lib/mcp/server";
 
 MCP.registerTool({
   name: "summarizePR",
-  description: "Reads a PR and returns a summary",
-  execute: async (prId: string) => {
-    // your logic
+  description: "Reads a GitLab MR and returns an AI summary",
+  parameters: {
+    mrId: { type: "string", description: "MR ID to summarize" }
+  },
+  execute: async ({ mrId }) => {
+    const mr = await fetchGitLabMR(mrId);
+    return summarizeWithLLM(mr.description + mr.diff);
   }
 });
 ```
+
+Once registered, your tool is immediately available to any agent connected via the `/api/mcp` route.
+
+---
+
+## Architecture
+
+```
+Browser / Claude Desktop
+        ↓ HTTP POST /api/mcp
+MCP Route Handler (Next.js App Router)
+        ↓ tool dispatch
+Tool Implementations (tRPC routers / Prisma)
+        ↓ DB queries
+PostgreSQL
+```
+
+The MCP layer is thin by design — it maps tool calls directly to existing tRPC procedures, meaning any existing PM operation can be exposed as an MCP tool with minimal boilerplate.

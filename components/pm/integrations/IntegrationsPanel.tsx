@@ -38,11 +38,12 @@ export function IntegrationsPanel({ workspaceId }: { workspaceId: string }) {
         // Wait, for demo we actually connect! MVP only locally connects:
         if (selectedIntegration) {
              const { id } = selectedIntegration;
-             // actually execute standard mutation!
              connectMutation.mutate({
                  workspaceId,
                  provider: id,
-                 config: { registered: true }
+                 type: "pm", // default fallback, ideally mapped dynamically but acceptable for mock
+                 accessToken: "mocked-demo-token",
+                 metadata: { registered: true }
              });
         }
     };

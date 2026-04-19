@@ -16,6 +16,7 @@ const NAV_GROUPS = [
       { slug: "overview", label: "Overview", icon: BookOpen },
       { slug: "vision", label: "Vision & Mission", icon: Telescope },
       { slug: "getting-started", label: "Quick Start", icon: Rocket },
+      { slug: "upcoming", label: "Upcoming Roadmap", icon: Activity },
     ]
   },
   {

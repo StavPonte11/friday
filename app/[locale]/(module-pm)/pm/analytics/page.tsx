@@ -170,7 +170,7 @@ export default function AnalyticsPage() {
                 </TabsContent>
 
                 <TabsContent value="detailed" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 outline-none">
-                    {/* Legcay charts move here */}
+                    {/* Burndown */}
                     <ChartCard>
                         <SectionHeader icon={TrendingDown} title="Sprint Burndown" subtitle="Story points remaining vs ideal trajectory" />
                         <ResponsiveContainer width="100%" height={220}>
@@ -192,75 +192,73 @@ export default function AnalyticsPage() {
                         </ResponsiveContainer>
                     </ChartCard>
 
-                </TabsContent>
-
-                {/* Row 2: CFD */}
-                <ChartCard>
-                    <SectionHeader icon={GitBranch} title="Cumulative Flow Diagram" subtitle="Issue count by status over the last 14 days" />
-                    <ResponsiveContainer width="100%" height={240}>
-                        <AreaChart data={cfdData} stackOffset="none">
-                            <defs>
-                                {["DONE", "IN_REVIEW", "IN_PROGRESS", "TODO", "BACKLOG"].map((s, i) => (
-                                    <linearGradient key={s} id={`cfd-${s}`} x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={Object.values(CHART_COLORS)[i]} stopOpacity={0.85} />
-                                        <stop offset="95%" stopColor={Object.values(CHART_COLORS)[i]} stopOpacity={0.6} />
-                                    </linearGradient>
-                                ))}
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-                            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} />
-                            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                            <Legend />
-                            {["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"].map((s, i) => (
-                                <Area key={s} type="monotone" dataKey={s} stackId="1"
-                                    stroke={Object.values(CHART_COLORS)[i]}
-                                    fill={`url(#cfd-${s})`}
-                                    strokeWidth={1}
-                                    name={s.replace("_", " ")}
-                                />
-                            ))}
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </ChartCard>
-
-                {/* Row 3: Cycle Time + Workload */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* CFD */}
                     <ChartCard>
-                        <SectionHeader icon={Clock} title="Cycle Time Distribution" subtitle="Days from creation to Done per ticket" />
-                        <div className="space-y-2 mt-2">
-                            {cycleData.map((item: any) => (
-                                <div key={item.key} className="flex items-center gap-3">
-                                    <span className="font-mono text-xs text-muted-foreground w-16 shrink-0">{item.key}</span>
-                                    <div className="flex-1 bg-muted rounded-full h-2">
-                                        <div
-                                            className="h-2 rounded-full bg-primary"
-                                            style={{ width: `${Math.min((item.cycleTime / 14) * 100, 100)}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-xs font-medium w-12 text-right">{item.cycleTime}d</span>
-                                </div>
-                            ))}
-                        </div>
-                    </ChartCard>
-
-                    <ChartCard>
-                        <SectionHeader icon={Users} title="Team Workload" subtitle="Open issues &amp; story points per assignee" />
-                        <ResponsiveContainer width="100%" height={200}>
-                            <BarChart data={workloadData} layout="vertical" barSize={14}>
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" horizontal={false} />
-                                <XAxis type="number" tick={{ fontSize: 11 }} />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={70} />
+                        <SectionHeader icon={GitBranch} title="Cumulative Flow Diagram" subtitle="Issue count by status over the last 14 days" />
+                        <ResponsiveContainer width="100%" height={240}>
+                            <AreaChart data={cfdData} stackOffset="none">
+                                <defs>
+                                    {["DONE", "IN_REVIEW", "IN_PROGRESS", "TODO", "BACKLOG"].map((s, i) => (
+                                        <linearGradient key={s} id={`cfd-${s}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={Object.values(CHART_COLORS)[i]} stopOpacity={0.85} />
+                                            <stop offset="95%" stopColor={Object.values(CHART_COLORS)[i]} stopOpacity={0.6} />
+                                        </linearGradient>
+                                    ))}
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
                                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                                 <Legend />
-                                <Bar dataKey="count" fill={CHART_COLORS.accent} name="Open Issues" radius={[0, 3, 3, 0]} />
-                                <Bar dataKey="points" fill={CHART_COLORS.warning} name="Story Points" radius={[0, 3, 3, 0]} />
-                            </BarChart>
+                                {["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"].map((s, i) => (
+                                    <Area key={s} type="monotone" dataKey={s} stackId="1"
+                                        stroke={Object.values(CHART_COLORS)[i]}
+                                        fill={`url(#cfd-${s})`}
+                                        strokeWidth={1}
+                                        name={s.replace("_", " ")}
+                                    />
+                                ))}
+                            </AreaChart>
                         </ResponsiveContainer>
                     </ChartCard>
-                </div>
-                {/* </TabsContent> */}
+
+                    {/* Cycle Time + Workload */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <ChartCard>
+                            <SectionHeader icon={Clock} title="Cycle Time Distribution" subtitle="Days from creation to Done per ticket" />
+                            <div className="space-y-2 mt-2">
+                                {cycleData.map((item: any) => (
+                                    <div key={item.key} className="flex items-center gap-3">
+                                        <span className="font-mono text-xs text-muted-foreground w-16 shrink-0">{item.key}</span>
+                                        <div className="flex-1 bg-muted rounded-full h-2">
+                                            <div
+                                                className="h-2 rounded-full bg-primary"
+                                                style={{ width: `${Math.min((item.cycleTime / 14) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs font-medium w-12 text-right">{item.cycleTime}d</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </ChartCard>
+
+                        <ChartCard>
+                            <SectionHeader icon={Users} title="Team Workload" subtitle="Open issues & story points per assignee" />
+                            <ResponsiveContainer width="100%" height={200}>
+                                <BarChart data={workloadData} layout="vertical" barSize={14}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" horizontal={false} />
+                                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={70} />
+                                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                                    <Legend />
+                                    <Bar dataKey="count" fill={CHART_COLORS.accent} name="Open Issues" radius={[0, 3, 3, 0]} />
+                                    <Bar dataKey="points" fill={CHART_COLORS.warning} name="Story Points" radius={[0, 3, 3, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </ChartCard>
+                    </div>
+                </TabsContent>
             </Tabs>
-        </div >
+        </div>
     );
 }

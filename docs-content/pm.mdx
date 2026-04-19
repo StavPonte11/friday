@@ -1,31 +1,103 @@
 ---
 title: FRIDAY PM
-description: Advanced Issue Tracking and Collaboration
+description: Advanced AI-Powered Project Management for engineering teams
+---
+
+## Overview
+
+The F.R.I.D.A.Y PM module is a full-featured, AI-augmented project management system. Issues are organized inside **Projects**, grouped into **Sprints**, and tracked across Kanban boards, Gantt timelines, and advanced analytics dashboards — all powered by local LLM intelligence.
+
+---
+
+## Command Center
+
+The **Command Center** (`/pm/dashboard`) is your single pane of glass for the entire engineering operation:
+
+- **Delivery Prediction** — AI-forecast sprint completion date based on velocity and remaining work
+- **Sprint Confidence Score** — live percentage updated as risks are resolved
+- **Team Load** — visual indicator of developer capacity vs active tasks
+- **Active Risks panel** — each risk card has a one-click **"Resolve Automatically"** button that creates a mitigation issue in the backlog
+- **Friday AI Copilot** — chat window wired to a real LLM with live project context (blocked issues, overdue items, team load)
+
+<Callout type="tip">
+  Click "Resolve Automatically" on a risk card in the Command Center to have FRIDAY instantly create a prioritized mitigation task and update your sprint confidence score.
+</Callout>
+
 ---
 
 ## Issue Management
 
-The heart of F.R.I.D.A.Y is the Project Management (PM) module, heavily inspired by modern workflows but infused with intelligence. Issues are managed inside **Projects**, and can be grouped into **Sprints**.
+Issues are the atomic unit of work in FRIDAY PM. Every issue has:
+
+| Field | Description |
+|---|---|
+| `key` | Auto-generated e.g. `PROJ-42` |
+| `title` | Short summary |
+| `status` | `TODO → IN_PROGRESS → IN_REVIEW → DONE → BLOCKED` |
+| `priority` | `NONE / LOW / MEDIUM / HIGH / URGENT` |
+| `storyPoints` | Fibonacci estimation |
+| `assignee` | Team member |
+| `dueDate` | Deadline for Gantt/Calendar display |
+| `sprint` | Current sprint assignment |
 
 ### Sprints & Boards
 
-Our Kanban board is fully real-time. Moving an issue updates the state globally, syncing presence and firing a background worker to analyze cycle-time changes. The board supports multiple status columns, priority visualizers, and an interactive properties sidebar.
+Our Kanban board is real-time. Moving an issue updates the state globally and fires a background intelligence worker. The board supports multiple status columns, priority visualizers, and an interactive properties sidebar.
 
 <Callout type="tip">
-  Use `CMD+K` anywhere in the app to search for an issue by its semantic meaning. We use `pgvector` to turn your query into an embedding, matching you with the relevant project context instantly.
+  Use `⌘K` (or `Ctrl+K`) anywhere in the PM module to search issues by semantic meaning, navigate pages, or trigger AI actions — all from the keyboard.
 </Callout>
 
-## Observability Dashboards
+---
 
-We don't just track work; we analyze it.
-
-- **Gantt & Calendar:** Auto-rendered timelines based on issue due dates and sprint bounds.
-- **Insights Engine:** A dedicated local LLM runs against your sprint metrics (Velocity, Cycle Time, Throughput) to generate an actionable health report every day.
-- **Execution Graph:** See a topological mapping of issue dependencies (blocking, related-to).
-
-## Collaboration
+## Collaboration & Comments
 
 FRIDAY is multiplayer:
-1. **At-Mentions:** Tag `@colleague` in any comment to trigger an in-app notification.
-2. **Presence:** See exactly who is looking at the same issue or board as you via WebSockets (Supabase Realtime / Socket.io).
-3. **Unified Activity Feed:** See every issue creation, transition, and commit in a single stream.
+
+1. **@Mentions** — Type `@name` in any comment to trigger a live autocomplete dropdown. Selecting a user inserts their handle and fires an in-app notification.
+2. **Replies & Threads** — Comments support nested replies (up to 3 levels) with edit and delete.
+3. **Presence** — See who is viewing the same issue via WebSockets.
+4. **Unified Activity Feed** — Every issue creation, transition, and comment in a single stream per issue.
+
+---
+
+## Intelligence Engine
+
+FRIDAY runs an AI intelligence layer on top of your project data:
+
+- **Risk Detection** — Analyzes blockers, overdue issues, and sprint velocity to surface risks ranked by severity (High / Medium / Low) with root cause and confidence score.
+- **Insight-to-Action** — Every detected risk shows an "Auto-Resolve" button that creates a logged mitigation task.
+- **Manager Reports** — AI-generated weekly markdown report with sprint velocity table, active blockers, and developer workload.
+- **Sprint Grooming** — AI deduplicates issues and flags oversized stories.
+
+---
+
+## Timeline & Calendar
+
+- **Gantt Chart** — Horizontal bars scaled to `startDate`/`dueDate`. Issues at risk of delay are highlighted with an orange stripe and **RISK** badge.
+- **Calendar View** — Monthly grid showing all issues with due dates.
+- **Dependencies** — Issues with `dependencies` show a 🔗 chain marker on the Gantt.
+
+---
+
+## Analytics
+
+The Analytics tab has three sub-views:
+
+| Tab | Contents |
+|---|---|
+| **Overview** | Burndown chart, status distribution pie, priority breakdown |
+| **Team** | Workload bar chart per assignee |
+| **Advanced Metrics** | Cumulative Flow Diagram (CFD), cycle time, throughput |
+
+---
+
+## Integrations
+
+Connect external tools under **Settings → Integrations**:
+
+- GitLab (MR tracking)
+- GitHub, Jira, Google Workspace
+- Webhook endpoints for CI/CD pipelines
+
+These are configured per-project and stored securely in the database.

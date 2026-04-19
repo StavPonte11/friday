@@ -22,9 +22,9 @@ export function CalendarView({ issues }: CalendarViewProps) {
     const issuesByDate = useMemo(() => {
         const map = new Map<string, GanttItem[]>();
         issues.forEach(issue => {
-            // Unify with Gantt logic: use start/end
-            let issueStart = issue.start ? new Date(issue.start) : new Date(issue.createdAt || today);
-            let issueEnd = issue.end ? new Date(issue.end) : new Date(issueStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+            // Unify with Gantt logic: use startDate/dueDate
+            let issueStart = issue.startDate ? new Date(issue.startDate) : new Date(today);
+            let issueEnd = issue.dueDate ? new Date(issue.dueDate) : new Date(issueStart.getTime() + 7 * 24 * 60 * 60 * 1000);
             
             // To prevent rendering over too many days, we just put it on start and end
             // Or better, we could fill every day but that could overload UI. 

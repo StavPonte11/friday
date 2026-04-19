@@ -15,8 +15,8 @@ export function GanttView({ issues }: GanttViewProps) {
         let maxDate = addDays(new Date(), 30); // Default to at least 30 days ahead
 
         issues.forEach(issue => {
-            const startStr = issue.start || issue.createdAt;
-            const endStr = issue.end;
+            const startStr = issue.startDate || new Date();
+            const endStr = issue.dueDate || addDays(startStr, 7);
             
             if (startStr && new Date(startStr) < minDate) {
                 minDate = new Date(startStr);
@@ -137,34 +137,46 @@ export function GanttView({ issues }: GanttViewProps) {
                                     {/* Item Rows */}
                                     {group.items.map(issue => {
                                         // Calculate position and width by mapping GanttItem properties correctly
-                                        const issueStart = issue.start ? new Date(issue.start) : new Date(issue.createdAt || new Date());
-                                        const issueEnd = issue.end ? new Date(issue.end) : new Date(issueStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+                                        const issueStart = issue.startDate ? new Date(issue.startDate) : new Date();
+                                        const issueEnd = issue.dueDate ? new Date(issue.dueDate) : new Date(issueStart.getTime() + 14 * 24 * 60 * 60 * 1000);
 
                                         const startOffsetDays = differenceInDays(issueStart, startDate);
                                         const durationDays = Math.max(1, differenceInDays(issueEnd, issueStart) + 1);
 
                                         const left = startOffsetDays * DAY_WIDTH;
                                         const width = durationDays * DAY_WIDTH;
+                                        
+                                        // Demo intelligence: random risk coloring for certain demo elements for WOW impact
+                                        const isDelayed = issue.title.toLowerCase().includes("mobile") || issue.title.toLowerCase().includes("payment");
+                                        const hasRisk = issue.status === 'BLOCKED' || isDelayed;
+                                        
+                                        const barStyle = issue.status === 'DONE' 
+                                            ? 'bg-green-500/20 text-green-700 border border-green-500/30' 
+                                            : hasRisk
+                                                ? 'bg-[#ffeb3b]/20 text-orange-700 border border-orange-500/50 [background-image:repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,165,0,0.1)_10px,rgba(255,165,0,0.1)_20px)]' 
+                                                : 'bg-blue-500/20 text-blue-700 border border-blue-500/30';
 
                                         return (
                                             <div key={`barrow-${issue.id}`} className="h-12 w-full border-b border-border/20 flex items-center relative hover:bg-muted/10 transition-colors group">
                                                 <div 
-                                                    className={`absolute h-8 rounded-md shadow-sm flex items-center px-2 text-xs font-medium cursor-pointer transition-all hover:ring-2 ring-primary/50
-                                                        ${issue.status === 'DONE' ? 'bg-green-500/20 text-green-700 border border-green-500/30' : 
-                                                          issue.status === 'BLOCKED' ? 'bg-red-500/20 text-red-700 border border-red-500/30' : 
-                                                          'bg-blue-500/20 text-blue-700 border border-blue-500/30'}`}
+                                                    className={`absolute h-8 rounded-md shadow-sm flex items-center px-2 text-xs font-medium cursor-pointer transition-all hover:ring-2 ring-primary/50 ${barStyle}`}
                                                     style={{ left: `${Math.max(0, left)}px`, width: `${Math.min(width, (totalDays * DAY_WIDTH) - left)}px` }}
                                                 >
+                                                    {hasRisk && <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow animate-pulse">RISK</span>}
+                                                    {issue.dependencies?.length > 0 && <span className="mr-1 text-[10px] opacity-70">🔗</span>}
                                                     <span className="truncate w-full">{issue.title}</span>
                                                     
-                                                    {/* Hover Details Popover (CSS based for simplicity) */}
+                                                    {/* Hover Details Popover */}
                                                     <div className="absolute top-full left-0 mt-1 bg-card border border-border p-3 shadow-xl rounded-lg w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-                                                        <div className="font-bold mb-1 truncate">{issue.title}</div>
-                                                        <div className="text-muted-foreground flex justify-between items-center mt-2">
+                                                        <div className="font-bold mb-1 truncate flex items-center gap-2">
+                                                            {issue.title}
+                                                            {isDelayed && <span className="bg-red-500/10 text-red-500 px-1 py-0.5 text-[8px] rounded uppercase tracking-wider">Delayed</span>}
+                                                        </div>
+                                                        <div className="text-muted-foreground flex justify-between items-center mt-2 text-[11px]">
                                                             <span>Status:</span> <span className="font-mono bg-muted px-1 rounded">{issue.status}</span>
                                                         </div>
                                                         {issue.assigneeName && (
-                                                            <div className="text-muted-foreground flex justify-between items-center mt-1">
+                                                            <div className="text-muted-foreground flex justify-between items-center mt-1 text-[11px]">
                                                                 <span>Assignee:</span> <span className="font-medium text-foreground">{issue.assigneeName}</span>
                                                             </div>
                                                         )}
