@@ -39,6 +39,7 @@ model User {
   pmSavedViews     PmSavedView[]
   pmFavorites      PmFavorite[]      @relation("UserFavorites")
   pmRecentViews    PmRecentView[]    @relation("UserRecentViews")
+  pmTimeLogs       PmTimeLog[]       @relation("UserTimeLogs")
 }
 
 model Session {
@@ -72,6 +73,7 @@ model Workspace {
   pmComments PmComment[]
   pmLabels   PmLabel[]
   pmTemplates PmIssueTemplate[] @relation("WorkspaceIssueTemplates")
+  pmImportJobs PmImportJob[]    @relation("WorkspaceImportJobs")
 }
 
 enum WorkspaceRole {
@@ -222,7 +224,8 @@ model PmProject {
   versions  PmVersion[]
   webhooks  PmWebhook[]
   savedViews PmSavedView[]
-  templates PmIssueTemplate[] @relation("ProjectIssueTemplates")
+  templates     PmIssueTemplate[] @relation("ProjectIssueTemplates")
+  pmImportJobs  PmImportJob[]     @relation("ProjectImportJobs")
 }
 
 enum PmIssuePriority {
@@ -236,9 +239,12 @@ enum PmIssuePriority {
 enum PmIssueType {
   INITIATIVE
   EPIC
+  FEATURE
   STORY
   TASK
   SUBTASK
+  BUG
+  TEST
 }
 
 model PmIssue {
@@ -294,6 +300,8 @@ model PmIssue {
   checklists  PmIssueChecklist[]
   sourceLinks PmIssueLink[]      @relation("SourceLinks")
   targetLinks PmIssueLink[]      @relation("TargetLinks")
+  timeLogs    PmTimeLog[]
+  gitLinks    PmGitLink[]
 }
 
 model PmIssueSnapshot {
@@ -553,3 +561,104 @@ model FeatureFlag {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Time Tracking
+// ─────────────────────────────────────────────────────────────────────
+
+model PmTimeLog {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  minutes   Int
+  note      String?
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User    @relation("UserTimeLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Import Jobs (Jira / other sources)
+// ─────────────────────────────────────────────────────────────────────
+
+enum ImportJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model PmImportJob {
+  id          String          @id @default(cuid())
+  workspaceId String
+  projectId   String?
+  source      String          // "jira" | "github" | "csv"
+  status      ImportJobStatus @default(PENDING)
+  progress    Int             @default(0)   // 0–100
+  total       Int             @default(0)
+  importedCount Int           @default(0)
+  error       String?
+  metadata    Json?           // store original config
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  workspace   Workspace @relation("WorkspaceImportJobs", fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     PmProject?  @relation("ProjectImportJobs", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Git Links (generic GitHub + GitLab)
+// ─────────────────────────────────────────────────────────────────────
+
+enum GitPrStatus {
+  OPEN
+  MERGED
+  CLOSED
+  DRAFT
+}
+
+model PmGitLink {
+  id        String      @id @default(cuid())
+  issueId   String
+  provider  String      // "github" | "gitlab"
+  repoName  String
+  prNumber  Int
+  prTitle   String?
+  prUrl     String
+  status    GitPrStatus @default(OPEN)
+  branch    String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, provider, repoName, prNumber])
+  @@index([issueId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Executive Dashboard Share Tokens
+// ─────────────────────────────────────────────────────────────────────
+
+model PmShareToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  workspaceId String
+  projectId   String?
+  createdById String?
+  expiresAt   DateTime?
+  viewCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([token])
+}
+

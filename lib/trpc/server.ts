@@ -11,7 +11,6 @@ import { pmAttachmentsRouter } from './routers/pm-attachments';
 import { pmWebhooksRouter } from './routers/pm-webhooks';
 import { pmGitLabRouter } from './routers/pm-gitlab';
 import { pmSavedViewsRouter } from './routers/pm-saved-views';
-
 import { pmVersionsRouter } from './routers/pm-versions';
 import { pmSearchRouter } from './routers/pm-search';
 import { pmFavoritesRouter } from './routers/pm-favorites';
@@ -20,6 +19,9 @@ import { pmAiRouter } from './routers/pm-ai';
 import { pmTimelineRouter } from './routers/pm-timeline';
 import { pmIntelligenceRouter } from './routers/pm-intelligence';
 import { pmIntegrationRouter } from './routers/pm-integrations';
+import { pmTimeTrackingRouter } from './routers/pm-time-tracking';
+import { pmHierarchyRouter } from './routers/pm-hierarchy';
+import { pmExecutiveRouter } from './routers/pm-executive';
 
 // Base app router
 export const appRouter = router({
@@ -44,6 +46,9 @@ export const appRouter = router({
     pmTimeline: pmTimelineRouter,
     pmIntelligence: pmIntelligenceRouter,
     pmIntegrations: pmIntegrationRouter,
+    pmTimeTracking: pmTimeTrackingRouter,
+    pmHierarchy: pmHierarchyRouter,
+    pmExecutive: pmExecutiveRouter,
 });
 
 export type AppRouter = typeof appRouter;

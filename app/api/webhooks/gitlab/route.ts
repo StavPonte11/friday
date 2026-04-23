@@ -1,113 +1,113 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { z } from "zod";
-
-// GitLab webhook event schema (subset of GitLab issue events)
-const GitLabWebhookSchema = z.object({
-    object_kind: z.string(),
-    project: z.object({
-        id: z.number(),
-        name: z.string(),
-        web_url: z.string(),
-    }),
-    object_attributes: z.object({
-        id: z.number(),
-        iid: z.number(),
-        title: z.string(),
-        description: z.string().nullable().optional(),
-        state: z.enum(["opened", "closed"]),
-        url: z.string().optional(),
-    }),
-    assignees: z.array(z.object({ username: z.string() })).optional().default([]),
-    labels: z.array(z.object({ title: z.string() })).optional().default([]),
-}).passthrough();
-
 /**
- * GitLab webhook receiver.
- * 
- * Register this URL in your GitLab project settings under Webhooks:
- * URL: https://your-friday-domain.com/api/webhooks/gitlab
- * Trigger: Issues events
- * 
- * Secret token: Set GITLAB_WEBHOOK_SECRET env var and add as "Secret token" in GitLab.
+ * GitLab Webhook Handler (enhanced)
+ * POST /api/webhooks/gitlab
  */
-export async function POST(req: NextRequest) {
-    // Verify webhook secret (optional but recommended)
-    const secret = process.env.GITLAB_WEBHOOK_SECRET;
-    if (secret) {
-        const gitlabToken = req.headers.get("x-gitlab-token");
-        if (gitlabToken !== secret) {
-            console.warn("[GitLab Webhook] Invalid secret token");
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { GitPrStatus } from "@prisma/client";
+import { langfuse } from "@/lib/langfuse";
+
+const ISSUE_KEY_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/g;
+function extractIssueKeys(text: string): string[] {
+    return Array.from(new Set([...text.matchAll(ISSUE_KEY_RE)].map(m => m[1])));
+}
+
+function mapGitLabMRState(state: string, mergedAt?: string | null): GitPrStatus {
+    if (mergedAt || state === "merged") return GitPrStatus.MERGED;
+    if (state === "closed") return GitPrStatus.CLOSED;
+    return GitPrStatus.OPEN;
+}
+
+export async function POST(req: Request) {
+    const start = Date.now();
+    const token = req.headers.get("x-gitlab-token") ?? "";
+    const expectedToken = process.env.GITLAB_WEBHOOK_SECRET ?? "";
+    if (expectedToken && token !== expectedToken) {
+        return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    let body: unknown;
+    const event = req.headers.get("x-gitlab-event") ?? "";
+    let payload: Record<string, unknown>;
     try {
-        body = await req.json();
+        payload = await req.json();
     } catch {
         return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
-    const parse = GitLabWebhookSchema.safeParse(body);
-    if (!parse.success) {
-        console.warn("[GitLab Webhook] Invalid payload:", parse.error.flatten());
-        return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    let processed = 0;
+
+    try {
+        if (event === "Merge Request Hook") {
+            const mr = payload.object_attributes as any;
+            const repo = (payload.project as any)?.path_with_namespace ?? "unknown/repo";
+            const allText = `${mr.title ?? ""} ${mr.description ?? ""} ${mr.source_branch ?? ""}`;
+            const keys = extractIssueKeys(allText);
+            const status = mapGitLabMRState(mr.state, mr.merged_at);
+
+            for (const key of keys) {
+                const issue = await prisma.pmIssue.findUnique({ where: { key } });
+                if (!issue) continue;
+
+                await prisma.pmGitLink.upsert({
+                    where: {
+                        issueId_provider_repoName_prNumber: {
+                            issueId: issue.id,
+                            provider: "gitlab",
+                            repoName: repo,
+                            prNumber: mr.iid,
+                        }
+                    },
+                    create: {
+                        issueId: issue.id,
+                        provider: "gitlab",
+                        repoName: repo,
+                        prNumber: mr.iid,
+                        prTitle: mr.title,
+                        prUrl: mr.url,
+                        status,
+                        branch: mr.source_branch,
+                    },
+                    update: { status, prTitle: mr.title },
+                });
+
+                if (status === GitPrStatus.MERGED && issue.status !== "DONE") {
+                    await prisma.pmIssue.update({
+                        where: { id: issue.id },
+                        data: { status: "IN_REVIEW" },
+                    });
+                }
+                processed++;
+            }
+        } else if (event === "Push Hook") {
+            const commits = (payload.commits as any[]) ?? [];
+            for (const commit of commits) {
+                const keys = extractIssueKeys(`${commit.message ?? ""} ${commit.title ?? ""}`);
+                for (const key of keys) {
+                    const issue = await prisma.pmIssue.findUnique({ where: { key } });
+                    if (!issue) continue;
+                    await prisma.pmIssueActivity.create({
+                        data: {
+                            issueId: issue.id,
+                            actorId: issue.creatorId,
+                            field: "git.commit",
+                            newValue: `${commit.id?.slice(0, 7)}: ${commit.message?.slice(0, 100)}`,
+                        }
+                    });
+                    processed++;
+                }
+            }
+        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[gitlab webhook]", message);
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const event = parse.data;
-
-    // Only handle issue events
-    if (event.object_kind !== "issue") {
-        return NextResponse.json({ status: "ignored", reason: "Not an issue event" });
-    }
-
-    const gitlabProjectId = event.project.id;
-    const gitlabIssueId = event.object_attributes.iid;
-    const newState = event.object_attributes.state;
-
-    // Find linked FRIDAY issues
-    const links = await prisma.pmGitLabLink.findMany({
-        where: { gitlabProjectId, gitlabIssueId },
-        include: { issue: { select: { id: true, key: true, status: true } } }
+    langfuse.trace({
+        name: "webhook.gitlab",
+        metadata: { event, processed, latencyMs: Date.now() - start }
     });
 
-    if (links.length === 0) {
-        return NextResponse.json({ status: "ok", synced: 0 });
-    }
-
-    let synced = 0;
-    for (const link of links) {
-        const fridayIssue = link.issue;
-
-        if (newState === "closed" && fridayIssue.status !== "DONE") {
-            // GitLab issue was closed → close FRIDAY issue
-            await prisma.pmIssue.update({
-                where: { id: fridayIssue.id },
-                data: { status: "DONE" }
-            });
-            await prisma.pmIssueActivity.create({
-                data: {
-                    issueId: fridayIssue.id,
-                    actorId: "system",
-                    field: "status",
-                    oldValue: fridayIssue.status,
-                    newValue: "DONE",
-                }
-            });
-            synced++;
-        } else if (newState === "opened" && fridayIssue.status === "DONE") {
-            // GitLab issue was reopened → reopen FRIDAY issue
-            await prisma.pmIssue.update({
-                where: { id: fridayIssue.id },
-                data: { status: "IN_PROGRESS" }
-            });
-            synced++;
-        }
-
-        // Update sync timestamp
-        await prisma.pmGitLabLink.update({ where: { id: link.id }, data: { synced: true } });
-    }
-
-    return NextResponse.json({ status: "ok", synced, total: links.length });
+    return NextResponse.json({ ok: true, event, processed });
 }

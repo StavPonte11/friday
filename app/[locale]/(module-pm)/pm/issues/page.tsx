@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { ListOrdered, Filter, CircleDashed, CheckCircle2, AlertCircle, Building } from "lucide-react";
+import { ListOrdered, Filter, CircleDashed, CheckCircle2, AlertCircle, Building, Layers2 } from "lucide-react";
 import { useLocale } from "next-intl";
 import {  PmIssuePriority } from "@prisma/client";
 import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
@@ -10,6 +10,7 @@ import { IssueEditor } from "@/components/issues/IssueEditor";
 import { IssueInsightsPanel } from "@/components/issues/IssueInsightsPanel";
 import { IssueFilters } from "@/components/issues/IssueFilters";
 import { BulkActionsBar } from "@/components/issues/BulkActionsBar";
+import { IssueHierarchyTree } from "@/components/pm/hierarchy/IssueHierarchyTree";
 
 // Simplified mapping for foundatoin phase
 const statusIcons = {
@@ -27,6 +28,7 @@ export default function IssuesPage() {
     const [selectedProjectId, setSelectedProjectId] = useState<string>("");
     const [filters, setFilters] = useState<any>({ projectId: "" });
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [viewMode, setViewMode] = useState<"list" | "hierarchy">("list");
 
     // Fetch all PM Projects
     const { data: projects, isLoading: isProjectsLoading } = trpc.pmProjects.list.useQuery();
@@ -98,13 +100,35 @@ export default function IssuesPage() {
                     </div>
                 </div>
 
-                <IssueFilters 
-                    projectId={selectedProjectId} 
-                    currentFilters={filters} 
-                    onFilterChange={setFilters} 
-                />
+                <div className="flex items-center gap-2">
+                    <IssueFilters
+                        projectId={selectedProjectId}
+                        currentFilters={filters}
+                        onFilterChange={setFilters}
+                    />
+                    {/* View toggle */}
+                    <div className="flex items-center rounded-lg border border-border bg-card p-0.5 ml-auto">
+                        <button onClick={() => setViewMode("list")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                            <ListOrdered size={13} /> List
+                        </button>
+                        <button onClick={() => setViewMode("hierarchy")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === "hierarchy" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                            <Layers2 size={13} /> Hierarchy
+                        </button>
+                    </div>
+                </div>
 
-                {isLoading ? (
+                {/* Hierarchy view */}
+                {viewMode === "hierarchy" && selectedProjectId && (
+                    <div className="rounded-2xl border border-border bg-card p-4">
+                        <IssueHierarchyTree
+                            projectId={selectedProjectId}
+                            onSelectIssue={setSelectedIssueId}
+                            selectedIssueId={selectedIssueId ?? undefined}
+                        />
+                    </div>
+                )}
+
+                {viewMode === "list" && (isLoading ? (
                     <div className="space-y-2">
                         {[1, 2, 3, 4, 5].map((i: any) => (
                             <div key={i} className="h-16 rounded-lg bg-card animate-pulse border border-border"></div>
@@ -172,7 +196,7 @@ export default function IssuesPage() {
                             </div>
                         )}
                     </div>
-                )}
+                ))}
             </div>
 
             <BulkActionsBar 
@@ -183,11 +207,11 @@ export default function IssuesPage() {
             />
 
             {/* Slide Over Details Pane */}
-            {selectedIssueId && selectedIssue && (
+            {selectedIssueId && (
                 <div className="w-full md:w-[600px] border-l border-border bg-card flex flex-col shadow-xl h-full slide-over animate-in slide-in-from-right">
                     <div className="flex items-center justify-between p-4 border-b border-border">
                         <div className="flex items-center gap-2 text-sm text-primary font-mono bg-primary/10 px-2 py-1 rounded">
-                            {selectedIssue.key}
+                            {selectedIssue?.key ?? "Issue"}
                         </div>
                         <button
                             onClick={() => setSelectedIssueId(null)}

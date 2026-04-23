@@ -11,6 +11,8 @@ import { IssueComments } from "./IssueComments";
 import { IssueAttachments } from "./IssueAttachments";
 import { GitLabLinkPanel } from "./GitLabLinkPanel";
 import { IssueLinksPanel } from "./IssueLinksPanel";
+import { TimeTracker } from "@/components/pm/time-tracking/TimeTracker";
+
 import {
     Select,
     SelectContent,
@@ -466,6 +468,16 @@ export function IssueEditor({ issueId, projectId }: IssueEditorProps) {
                                         }}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Time Tracker */}
+                            <div className="pt-3 border-t border-border">
+                                <TimeTracker
+                                    issueId={issueId}
+                                    userId={(session?.user as any)?.id ?? ""}
+                                    originalEstimate={(issue as any).originalEstimate}
+                                    timeSpent={(issue as any).timeSpent}
+                                />
                             </div>
                         </div>
                     </div>

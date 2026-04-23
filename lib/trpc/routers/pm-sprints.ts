@@ -177,5 +177,63 @@ export const pmSprintsRouter = router({
                     }
                 });
             }
-        })
+        }),
+
+    /** Apply an AI-recommended sprint plan — creates the sprint and assigns issues */
+    applyPlan: publicProcedure
+        .input(z.object({
+            projectId: z.string(),
+            name: z.string().min(1),
+            goal: z.string().optional(),
+            startDate: z.coerce.date().optional(),
+            endDate: z.coerce.date().optional(),
+            issueIds: z.array(z.string()).min(1).max(100),
+        }))
+        .mutation(async ({ input }) => {
+            const { projectId, name, goal, startDate, endDate, issueIds } = input;
+
+            // Validate all issues belong to the project
+            const issues = await prisma.pmIssue.findMany({
+                where: { id: { in: issueIds }, projectId, deletedAt: null },
+                select: { id: true, storyPoints: true }
+            });
+
+            if (issues.length === 0) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: "No valid issues found for this project" });
+            }
+
+            const totalPoints = issues.reduce((sum, i) => sum + (i.storyPoints ?? 0), 0);
+
+            // Create sprint and assign issues atomically
+            const sprint = await prisma.$transaction(async (tx) => {
+                const newSprint = await tx.pmSprint.create({
+                    data: { projectId, name, goal, startDate, endDate, status: "PLANNED" }
+                });
+
+                await tx.pmIssue.updateMany({
+                    where: { id: { in: issues.map(i => i.id) } },
+                    data: { sprintId: newSprint.id },
+                });
+
+                return newSprint;
+            });
+
+            await dispatchWebhook(projectId, "sprint.created", {
+                sprintId: sprint.id,
+                sprintName: sprint.name,
+                issueCount: issues.length,
+                totalPoints,
+            });
+
+            langfuse.trace({
+                name: "pm.ai.sprint.applied",
+                metadata: { projectId, sprintId: sprint.id, issueCount: issues.length, totalPoints }
+            });
+
+            return {
+                sprint,
+                issueCount: issues.length,
+                totalPoints,
+            };
+        }),
 });
