@@ -4,8 +4,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Activity, Target, Zap, AlertTriangle, Play, MessageSquare, ArrowRight, CheckCircle2, UserCircle2, Loader2, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
 
 export function CommandCenter() {
+    const { data: session } = useSession();
     const [actioning, setActioning] = useState<string | null>(null);
     const [chatInput, setChatInput] = useState("");
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
@@ -28,6 +30,9 @@ export function CommandCenter() {
 
     const handleQuickAction = async (id: string) => {
         if (!projectId) return;
+
+        const userId = (session?.user as any)?.id || "admin@friday.local";
+
         setActioning(id);
         try {
             if (id === "R1" || id === "R2") {
@@ -38,7 +43,7 @@ export function CommandCenter() {
                     description: `Automatically generated mitigation task for risk: ${risk.title}`,
                     priority: id === "R1" ? "URGENT" : "HIGH",
                     status: "TODO",
-                    creatorId: "demo-user",
+                    creatorId: userId,
                 });
                 setRisks(prev => prev.filter(r => r.id !== id));
                 setConfidence(prev => prev + (id === "R1" ? 12 : 3));

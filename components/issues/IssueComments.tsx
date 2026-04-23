@@ -44,7 +44,7 @@ function MentionInput({ value, onChange, onSubmit, placeholder, minHeight = "100
 
     const { data: mentionUsers = [], isFetching } = trpc.pmSearch.mentionUsers.useQuery(
         { query: mentionQuery ?? "" },
-        { enabled: !!mentionQuery && mentionQuery.length > 0 }
+        { enabled: mentionQuery !== null }
     );
 
     function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc/client";
 import { Search, Plus, Zap, LayoutDashboard, BarChart3, Kanban, X, Clock } from "lucide-react";
@@ -25,6 +26,12 @@ export function CommandPalette() {
     const [selected, setSelected] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
+    const locale = useLocale();
+
+    const nav = useCallback((path: string) => {
+        router.push(`/${locale}${path}`);
+        setOpen(false);
+    }, [router, locale]);
 
     const { data: session } = useSession();
     const userId = (session?.user as any)?.id;
@@ -77,7 +84,7 @@ export function CommandPalette() {
             label: "Open Board",
             description: "Kanban board view",
             icon: <Kanban className="w-4 h-4" />,
-            onSelect: () => { router.push("/pm/board"); setOpen(false); },
+            onSelect: () => nav("/pm/board"),
         },
         {
             id: "nav-analytics",
@@ -85,7 +92,7 @@ export function CommandPalette() {
             label: "Open Analytics",
             description: "Project analytics & charts",
             icon: <BarChart3 className="w-4 h-4" />,
-            onSelect: () => { router.push("/pm/analytics"); setOpen(false); },
+            onSelect: () => nav("/pm/analytics"),
         },
         {
             id: "nav-dashboard",
@@ -93,7 +100,7 @@ export function CommandPalette() {
             label: "Open Dashboard",
             description: "Team productivity dashboard",
             icon: <LayoutDashboard className="w-4 h-4" />,
-            onSelect: () => { router.push("/pm/dashboard"); setOpen(false); },
+            onSelect: () => nav("/pm/dashboard"),
         },
         // Actions
         {
@@ -138,10 +145,7 @@ export function CommandPalette() {
         label: `${issue.key}: ${issue.title}`,
         description: issue.status,
         icon: <span className="text-xs font-mono text-muted-foreground">{issue.key}</span>,
-        onSelect: () => {
-            router.push(`/pm/issues/${issue.id}`);
-            setOpen(false);
-        },
+        onSelect: () => nav(`/pm/issues/${issue.id}`),
     }));
 
     const projectCommands: CommandItem[] = (searchResults?.projects ?? []).map(project => ({
@@ -150,10 +154,7 @@ export function CommandPalette() {
         label: `${project.key}: ${project.name}`,
         description: "Project",
         icon: <span className="text-xs font-mono text-muted-foreground">{project.key}</span>,
-        onSelect: () => {
-            router.push(`/pm/projects/${project.id}`);
-            setOpen(false);
-        },
+        onSelect: () => nav(`/pm/projects/${project.id}`),
     }));
 
     const recentIssueCommands: CommandItem[] = (recentViews?.issues ?? []).map(issue => ({
@@ -162,10 +163,7 @@ export function CommandPalette() {
         label: `${issue.key}: ${issue.title}`,
         description: "Recent Issue",
         icon: <Clock className="w-3.5 h-3.5 text-muted-foreground" />,
-        onSelect: () => {
-            router.push(`/pm/issues/${issue.id}`);
-            setOpen(false);
-        },
+        onSelect: () => nav(`/pm/issues/${issue.id}`),
     }));
 
     const recentProjectCommands: CommandItem[] = (recentViews?.projects ?? []).map(project => ({
@@ -174,10 +172,7 @@ export function CommandPalette() {
         label: `${project.key}: ${project.name}`,
         description: "Recent Project",
         icon: <Clock className="w-3.5 h-3.5 text-muted-foreground" />,
-        onSelect: () => {
-            router.push(`/pm/projects/${project.id}`);
-            setOpen(false);
-        },
+        onSelect: () => nav(`/pm/projects/${project.id}`),
     }));
 
     const q = query.toLowerCase();

@@ -68,7 +68,12 @@ export const pmSearchRouter = router({
     mentionUsers: publicProcedure
         .input(z.object({ query: z.string(), limit: z.number().int().default(6) }))
         .query(async ({ input }) => {
-            if (input.query.trim().length < 1) return [];
+            if (input.query.trim().length < 1) {
+                return prisma.user.findMany({
+                    take: input.limit,
+                    select: { id: true, name: true, email: true, image: true }
+                });
+            }
             return prisma.user.findMany({
                 where: {
                     OR: [

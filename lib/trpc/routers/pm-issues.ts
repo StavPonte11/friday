@@ -9,6 +9,17 @@ import { notify } from "@/lib/pm/notification-service";
 import { dispatchWebhook } from "@/lib/trpc/routers/pm-webhooks";
 import { broadcastProjectEvent } from "@/lib/pm/presence-store";
 
+async function resolveUserId(idOrEmail: string) {
+    if (idOrEmail && idOrEmail.includes("@")) {
+        let u = await prisma.user.findFirst({ where: { email: idOrEmail } });
+        if (u) return u.id;
+        
+        u = await prisma.user.findFirst(); // Extreme fallback for local dev
+        if (u) return u.id;
+    }
+    return idOrEmail;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared filter schema – reusable for listByProject and saved views
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,9 +185,12 @@ export const pmIssuesRouter = router({
                 const count = await prisma.pmIssue.count({ where: { projectId: input.projectId } });
                 const nextKey = `${project.key}-${count + 1}`;
 
+                const actualCreatorId = await resolveUserId(input.creatorId);
+
                 const newIssue = await prisma.pmIssue.create({
                     data: {
                         ...issueData,
+                        creatorId: actualCreatorId,
                         dueDate: dueDate ? new Date(dueDate) : null,
                         workspaceId: input.workspaceId || project.workspaceId,
                         key: nextKey,
@@ -252,6 +266,7 @@ export const pmIssuesRouter = router({
         }))
         .mutation(async ({ input }) => {
             const { id, actorId, labelIds, version, dueDate, ...data } = input;
+            const actualActorId = await resolveUserId(actorId);
 
             return prisma.$transaction(async (tx: any) => {
                 const oldIssue = await tx.pmIssue.findUnique({ where: { id, deletedAt: null } });
@@ -291,7 +306,7 @@ export const pmIssuesRouter = router({
                     const newVal = updatedIssue[key as keyof typeof updatedIssue];
                     if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
                         activities.push({
-                            issueId: id, actorId, field: key,
+                            issueId: id, actorId: actualActorId, field: key,
                             oldValue: typeof oldVal === "object" ? JSON.stringify(oldVal) : String(oldVal ?? ""),
                             newValue: typeof newVal === "object" ? JSON.stringify(newVal) : String(newVal ?? ""),
                         });
@@ -303,7 +318,7 @@ export const pmIssuesRouter = router({
                 }
 
                 // Notify if assignee changed
-                if (data.assigneeId && data.assigneeId !== oldIssue.assigneeId && data.assigneeId !== actorId) {
+                if (data.assigneeId && data.assigneeId !== oldIssue.assigneeId && data.assigneeId !== actualActorId) {
                     await notify(data.assigneeId, "issue_assigned",
                         `You were assigned to ${oldIssue.key}: ${oldIssue.title}`, {
                             issueId: id, issueKey: oldIssue.key, issueTitle: oldIssue.title, projectId: oldIssue.projectId
@@ -316,7 +331,7 @@ export const pmIssuesRouter = router({
                     issueId: id,
                     issueKey: oldIssue.key,
                     changes: activities.map(a => ({ field: a.field, old: a.oldValue, new: a.newValue })),
-                    actorId
+                    actorId: actualActorId
                 });
 
                 // Broadcast realtime event to board listeners
@@ -351,6 +366,7 @@ export const pmIssuesRouter = router({
         .mutation(async ({ input }) => {
             const { ids, patch, actorId } = input;
             const { labelIds, ...scalarPatch } = patch;
+            const actualActorId = await resolveUserId(actorId);
 
             // Build update data
             const updateData: any = Object.fromEntries(
@@ -376,11 +392,12 @@ export const pmIssuesRouter = router({
     delete: publicProcedure
         .input(z.object({ id: z.string(), actorId: z.string() }))
         .mutation(async ({ input }) => {
+            const actualActorId = await resolveUserId(input.actorId);
             await prisma.pmIssue.update({
                 where: { id: input.id },
-                data: { deletedAt: new Date(), deletedById: input.actorId } as any
+                data: { deletedAt: new Date(), deletedById: actualActorId } as any
             });
-            langfuse.trace({ name: "pm.issue.delete", userId: input.actorId, metadata: { issueId: input.id } });
+            langfuse.trace({ name: "pm.issue.delete", userId: actualActorId, metadata: { issueId: input.id } });
             return { success: true };
         }),
 

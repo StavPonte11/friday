@@ -73,7 +73,10 @@ export default function IssuesPage() {
                             <Building size={16} className="text-muted-foreground" />
                             <select 
                                 value={selectedProjectId}
-                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedProjectId(e.target.value);
+                                    setFilters((prev: any) => ({ ...prev, projectId: e.target.value }));
+                                }}
                                 className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer outline-none w-40"
                                 disabled={isProjectsLoading}
                             >

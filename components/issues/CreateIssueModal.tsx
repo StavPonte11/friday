@@ -138,7 +138,7 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
     const createMutation = trpc.pmIssues.create.useMutation();
 
     function onSubmit(values: z.infer<typeof formSchema>) {
-        const userId = (session?.user as any)?.id || "";
+        const userId = (session?.user as any)?.id || "admin@friday.local";
         
         createMutation.mutate({
             ...values,
@@ -151,10 +151,12 @@ export function CreateIssueModal({ projectId, workspaceId, onSuccess }: CreateIs
                 setOpen(false);
                 form.reset();
                 utils.pmIssues.listByProject.invalidate({ projectId });
+                utils.pmIssues.listInfiniteByProject.invalidate({ projectId });
                 onSuccess?.();
             },
             onError: () => {
                 utils.pmIssues.listByProject.invalidate({ projectId });
+                utils.pmIssues.listInfiniteByProject.invalidate({ projectId });
             }
         });
     }

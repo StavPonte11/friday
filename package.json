@@ -32,7 +32,6 @@
     "@langchain/core": "^1.1.28",
     "@langchain/langgraph": "^1.1.5",
     "@langchain/openai": "^0.0.33",
-    "@next/swc-win32-x64-msvc": "^16.1.6",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.70.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.212.0",

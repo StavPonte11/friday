@@ -13,7 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U friday -d friday_portal"]
+      test: [ "CMD-SHELL", "pg_isready -U friday -d friday_portal" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -80,13 +80,13 @@ services:
       - minio_data:/data
 
   # LLM Runner
-  # ollama:
-  #   image: ollama/ollama
-  #   restart: always
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
+  ollama:
+    image: ollama/ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
 
   # Tracing
   langfuse-server:
@@ -95,7 +95,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "3100:3000"  # Use 3100 to avoid conflict with Next.js on 3000
+      - "3100:3000" # Use 3100 to avoid conflict with Next.js on 3000
     environment:
       - DATABASE_URL=postgresql://friday:friday_password@postgres:5432/langfuse
       - NEXTAUTH_SECRET=friday_langfuse_secret
@@ -108,7 +108,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib
     restart: always
-    command: ["--config=/etc/otel-collector.yml"]
+    command: [ "--config=/etc/otel-collector.yml" ]
     volumes:
       - ./otel-collector.yml:/etc/otel-collector.yml
     ports:

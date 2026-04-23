@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { langfuse } from "@/lib/langfuse";
 import { generateSprintPlan } from "@/lib/ai/pm-sprint-planning";
 import { dispatchWebhook } from "./pm-webhooks";
+import { TRPCError } from "@trpc/server";
 
 
 export const pmSprintsRouter = router({
@@ -130,7 +131,10 @@ export const pmSprintsRouter = router({
                 });
 
                 if (backlogIssues.length === 0) {
-                    throw new Error("No available backlog issues found for planning.");
+                    throw new TRPCError({
+                        code: "BAD_REQUEST",
+                        message: "No available backlog issues found for planning."
+                    });
                 }
 
                 // Map format for LLM prompt

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Risk, Insight } from "@/lib/ai/project-intelligence";
+import { useSession } from "next-auth/react";
 
 interface IntelligencePanelProps {
     projectId: string;
@@ -94,6 +95,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 }
 
 export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProps) {
+    const { data: session } = useSession();
     const [actioningRiskId, setActioningRiskId] = useState<string | null>(null);
     const [resolvedRiskIds, setResolvedRiskIds] = useState<Set<string>>(new Set());
     const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
@@ -107,6 +109,8 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
     };
 
     const handleRiskAction = async (risk: Risk) => {
+        const userId = (session?.user as any)?.id || "admin@friday.local";
+
         setActioningRiskId(risk.id);
         try {
             await createIssueMutation.mutateAsync({
@@ -115,7 +119,7 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
                 description: `Auto-generated mitigation task.\n\n**Risk:** ${risk.description}\n\n**Recommendation:** ${risk.recommendation}`,
                 priority: risk.severity === "high" ? "URGENT" : risk.severity === "medium" ? "HIGH" : "MEDIUM",
                 status: "TODO",
-                creatorId: "demo-user", // fallback; server performs email lookup if needed
+                creatorId: userId,
             });
             setResolvedRiskIds(prev => new Set([...prev, risk.id]));
             addToast(`✅ Mitigation task created for "${risk.title}"`);
