@@ -5,17 +5,90 @@ description: Connecting FRIDAY to the outside world
 
 ## Background Workers
 
-FRIDAY's true power lies in its asynchronous processing. We utilize a robust RabbitMQ implementation via `QueueService` to handle integrations without blocking the main Next.js thread.
+FRIDAY\'s true power lies in its asynchronous processing. We utilize a robust RabbitMQ implementation via `QueueService` to handle integrations without blocking the main Next.js thread.
 
-### GitHub Integration
-The `github-sync.worker.ts` listens for incoming webhooks (Push, PR opened, Review submitted). When an event occurs, the worker parses the commit message for issue IDs (e.g., `Fixes #42`) and automatically transitions the corresponding FRIDAY issue on the PM board.
+## Git Integrations (GitHub + GitLab)
 
-### Email Integration
+Git integrations allow you to link issues to Pull Requests (PRs) or Merge Requests (MRs) automatically. 
+
+**Flow:**
+1. Connect via the Integrations Panel. The UI triggers `pmIntegrations.connect` to map the workspace to the Git provider.
+2. Background workers (like `github-sync.worker.ts`) listen for incoming webhooks (Push, PR/MR opened, Review submitted).
+3. The worker parses commit messages for issue IDs (e.g., `Fixes #42`) and automatically transitions the corresponding FRIDAY issue on the PM board.
+
+**Required Parameters (Connect API):**
+- `workspaceId`: The target FRIDAY workspace ID.
+- `provider`: `"github"` or `"gitlab"`.
+- `type`: `"git"`.
+- `accessToken`: OAuth token or Personal Access Token.
+- `metadata`: Additional information required for the setup.
+
+## Jira Import System
+
+The Jira Import System allows users to bulk import projects, issues, statuses, and assignees directly into FRIDAY.
+
+**Flow:**
+1. Connect via the Integrations Panel (or API) using the Jira domain, access token, and specific Jira Project Key.
+2. A `PmImportJob` record is created synchronously to track progress.
+3. The actual import runs asynchronously in the background. It calls Jira\'s REST API v3 to fetch issues in batches and maps Jira fields (Status, Priority, Type) to FRIDAY\'s equivalents.
+4. Clients can poll the job status via the `pmIntegrations.importJobStatus` tRPC endpoint.
+
+**Required Parameters:**
+- `projectId`: Target FRIDAY Project ID.
+- `workspaceId`: Target FRIDAY Workspace ID.
+- `jiraProjectKey`: The key of the source Jira project (e.g., `PROJ`).
+- `defaultAssigneeId` (Optional): ID of user to assign issues if the Jira assignee cannot be found.
+- *From Integration connection*: `domain` and `accessToken`.
+
+## Calendar + Email Integration
+
+**Flow (Calendar):** 
+The `CalendarSyncWorker` monitors your team\'s Google or Outlook calendars, reflecting Gantt milestones as calendar events. When a sprint is delayed in FRIDAY, the events shift automatically.
+**Required Parameters:** 
+- `provider` (`"google"` or calendar equivalent), `accessToken`, `type`: `"calendar"`.
+
+**Flow (Email):** 
 The `EmailSyncWorker` processes a unified inbox natively within the enterprise. Emails sent to `project-XYZ@friday.internal` are ingested, creating an issue with the sender attributed automatically, linking directly back to the original email thread.
+**Required Parameters:** 
+- No user-specific parameters needed beyond system mail configuration.
 
-### Calendar Integration
-The `CalendarSyncWorker` monitors your team's Google/Outlook calendars, reflecting Gantt milestones as calendar events. When a sprint is delayed in FRIDAY, the events shift automatically.
+## Figma Integration
+
+Embed and link design frames directly into issues or FRIDAY boards.
+
+**Flow:**
+1. Connect Figma through the Integrations Panel.
+2. When linked, users can map specific Figma frames to FRIDAY issues or sprints. FRIDAY fetches live thumbnail previews and design updates.
+
+**Required Parameters:**
+- `provider`: `"figma"`.
+- `type`: `"design"`.
+- `accessToken`: Figma API Key or OAuth token.
+
+## SSO + Login Integration
+
+A robust simulated Single Sign-On endpoint that manages enterprise connections.
+
+**Flow:**
+1. The SSO integration endpoint (`/api/auth/sso`) receives a response from an SSO provider (e.g., Okta, Auth0, Azure AD).
+2. It accepts a `base64` encoded JSON identity payload.
+3. The system maps the identity payload and uses an upsert to either create a new user or update an existing session.
+4. Returns the verified identity along with a success message, prompting the client to initialize a NextAuth `signIn()` utilizing the credentials.
+
+**Required Parameters:**
+- `token`: A Base64 encoded JSON string passed as a query parameter (e.g., `?token=...`).
+
+**Payload Shape inside the token:**
+```json
+{
+  "email": "user@example.com",
+  "name": "Alice",
+  "ssoProvider": "okta",
+  "ssoId": "user-unique-id-from-provider",
+  "image": "https://example.com/avatar.jpg" // Optional
+}
+```
 
 <Callout type="warning">
-  Ensure your `RABBITMQ_URL` is configured in `.env`. Without a running broker, webhook events will fail to process.
+  Ensure your `RABBITMQ_URL` is configured in `.env`. Without a running broker, webhook events for GitHub/GitLab will fail to process.
 </Callout>

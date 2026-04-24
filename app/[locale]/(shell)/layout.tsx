@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { CommandPalette } from "@/components/shell/CommandPalette";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { trpc } from "@/lib/trpc/client";
 
 export default function ShellLayout({
     children,
@@ -10,6 +12,11 @@ export default function ShellLayout({
     children: React.ReactNode;
 }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const { data: workspaces, isLoading } = trpc.workspaces.list.useQuery();
+    
+    // Show wizard if workspaces load and are empty
+    const showWizard = !isLoading && workspaces !== undefined && workspaces.length === 0;
 
     return (
         <div className="flex h-screen overflow-hidden bg-background">
@@ -22,6 +29,8 @@ export default function ShellLayout({
             </div>
 
             <CommandPalette />
+            
+            {showWizard && <OnboardingWizard open={true} />}
         </div>
     );
 }

@@ -22,6 +22,11 @@ import { pmIntegrationRouter } from './routers/pm-integrations';
 import { pmTimeTrackingRouter } from './routers/pm-time-tracking';
 import { pmHierarchyRouter } from './routers/pm-hierarchy';
 import { pmExecutiveRouter } from './routers/pm-executive';
+import { adminUsersRouter } from './routers/admin-users';
+import { adminGroupsRouter } from './routers/admin-groups';
+import { boardAccessRouter } from './routers/board-access';
+import { adminInvitesRouter } from './routers/admin-invites';
+import { pmActivityRouter } from './routers/pm-activity';
 
 // Base app router
 export const appRouter = router({
@@ -49,6 +54,11 @@ export const appRouter = router({
     pmTimeTracking: pmTimeTrackingRouter,
     pmHierarchy: pmHierarchyRouter,
     pmExecutive: pmExecutiveRouter,
+    pmActivity: pmActivityRouter,
+    adminUsers: adminUsersRouter,
+    adminGroups: adminGroupsRouter,
+    boardAccess: boardAccessRouter,
+    adminInvites: adminInvitesRouter,
 });
 
 export type AppRouter = typeof appRouter;

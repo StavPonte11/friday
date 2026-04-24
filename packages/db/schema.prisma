@@ -17,6 +17,10 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
+  passwordHash  String?   // bcrypt hash; null for OAuth-only users
+  isActive      Boolean   @default(true)
+  timezone      String    @default("UTC")
+  notificationConfig Json?
   ssoProvider   String?
   ssoId         String?
   createdAt     DateTime  @default(now())
@@ -27,6 +31,7 @@ model User {
   apiKeys          ApiKey[]
   auditLogs        AuditLog[]        @relation("UserAuditLogs")
   integrations     Integration[]     @relation("UserIntegrations")
+  groupMembers     WorkspaceGroupMember[]
 
   // PM Module opposite relations
   assignedIssues   PmIssue[]         @relation("IssueAssignee")
@@ -40,6 +45,8 @@ model User {
   pmFavorites      PmFavorite[]      @relation("UserFavorites")
   pmRecentViews    PmRecentView[]    @relation("UserRecentViews")
   pmTimeLogs       PmTimeLog[]       @relation("UserTimeLogs")
+
+  sentInvites      WorkspaceInvite[] @relation("UserSentInvites")
 }
 
 model Session {
@@ -63,6 +70,8 @@ model Workspace {
   apiKeys   ApiKey[]
   auditLogs AuditLog[]
   integrations Integration[] @relation("WorkspaceIntegrations")
+  groups    WorkspaceGroup[]
+  invites   WorkspaceInvite[]
 
   // PM Module opposite relations
   pmTeams    PmTeam[]
@@ -74,6 +83,37 @@ model Workspace {
   pmLabels   PmLabel[]
   pmTemplates PmIssueTemplate[] @relation("WorkspaceIssueTemplates")
   pmImportJobs PmImportJob[]    @relation("WorkspaceImportJobs")
+}
+
+// Groups within a workspace (org-level teams / access groups)
+model WorkspaceGroup {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     WorkspaceGroupMember[]
+  boardAccess PmBoardAccess[]        @relation("GroupBoardAccess")
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model WorkspaceGroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  group WorkspaceGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
 }
 
 enum WorkspaceRole {
@@ -109,6 +149,32 @@ model WorkspaceModule {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, moduleId])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model WorkspaceInvite {
+  id          String       @id @default(cuid())
+  email       String
+  token       String       @unique
+  workspaceId String
+  role        WorkspaceRole @default(MEMBER)
+  status      InviteStatus  @default(PENDING)
+  invitedById String
+  expiresAt   DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("UserSentInvites", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([token])
 }
 
 model ApiKey {
@@ -210,22 +276,56 @@ model PmProject {
   name        String
   description String?
   workflow    Json?
+  isPrivate   Boolean  @default(false) // if true, only explicit grants can access
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
   deletedById String?
 
-  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  team      PmTeam?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  issues    PmIssue[]
-  sprints   PmSprint[]
-  labels    PmLabel[]
-  members   PmProjectMember[]
-  versions  PmVersion[]
-  webhooks  PmWebhook[]
-  savedViews PmSavedView[]
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team        PmTeam?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  issues      PmIssue[]
+  sprints     PmSprint[]
+  labels      PmLabel[]
+  members     PmProjectMember[]
+  versions    PmVersion[]
+  webhooks    PmWebhook[]
+  savedViews  PmSavedView[]
+  boardAccess PmBoardAccess[]
   templates     PmIssueTemplate[] @relation("ProjectIssueTemplates")
   pmImportJobs  PmImportJob[]     @relation("ProjectImportJobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Board Access Grants (fine-grained sharing)
+// ─────────────────────────────────────────────────────────────────────
+
+enum PmBoardEntityType {
+  USER
+  GROUP
+}
+
+enum PmBoardRole {
+  VIEWER
+  EDITOR
+}
+
+model PmBoardAccess {
+  id         String            @id @default(cuid())
+  projectId  String
+  entityType PmBoardEntityType
+  entityId   String            // userId or groupId
+  role       PmBoardRole       @default(VIEWER)
+  grantedById String?          // who granted this
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  project PmProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  group   WorkspaceGroup? @relation("GroupBoardAccess", fields: [entityId], references: [id], onDelete: Cascade, map: "PmBoardAccess_group_fk")
+
+  @@unique([projectId, entityType, entityId])
+  @@index([projectId])
+  @@index([entityId])
 }
 
 enum PmIssuePriority {
@@ -657,6 +757,8 @@ model PmShareToken {
   createdById String?
   expiresAt   DateTime?
   viewCount   Int       @default(0)
+  isPublic    Boolean   @default(false)
+  passwordHash String?
   createdAt   DateTime  @default(now())
 
   @@index([token])

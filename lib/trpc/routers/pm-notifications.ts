@@ -1,21 +1,17 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../init";
+import { router, protectedProcedure } from "../init";
 import { prisma } from "@/lib/prisma";
 
 export const pmNotificationsRouter = router({
-    /**
-     * List notifications for the current user, most recent first.
-     */
-    list: publicProcedure
+    list: protectedProcedure
         .input(z.object({
-            userId: z.string(),
             unreadOnly: z.boolean().optional().default(false),
             limit: z.number().min(1).max(100).default(50),
         }))
-        .query(async ({ input }) => {
+        .query(async ({ ctx, input }) => {
             return prisma.pmNotification.findMany({
                 where: {
-                    userId: input.userId,
+                    userId: ctx.session.user.id,
                     ...(input.unreadOnly ? { read: false } : {})
                 },
                 orderBy: { createdAt: "desc" },
@@ -23,49 +19,34 @@ export const pmNotificationsRouter = router({
             });
         }),
 
-    /**
-     * Count unread notifications for a user.
-     */
-    unreadCount: publicProcedure
-        .input(z.object({ userId: z.string() }))
-        .query(async ({ input }) => {
+    unreadCount: protectedProcedure
+        .query(async ({ ctx }) => {
             return prisma.pmNotification.count({
-                where: { userId: input.userId, read: false }
+                where: { userId: ctx.session.user.id, read: false }
             });
         }),
 
-    /**
-     * Mark a single notification as read.
-     */
-    markRead: publicProcedure
-        .input(z.object({ id: z.string(), userId: z.string() }))
-        .mutation(async ({ input }) => {
+    markRead: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
             return prisma.pmNotification.updateMany({
-                where: { id: input.id, userId: input.userId },
+                where: { id: input.id, userId: ctx.session.user.id },
                 data: { read: true }
             });
         }),
 
-    /**
-     * Mark all notifications as read for a user.
-     */
-    markAllRead: publicProcedure
-        .input(z.object({ userId: z.string() }))
-        .mutation(async ({ input }) => {
+    markAllRead: protectedProcedure
+        .mutation(async ({ ctx }) => {
             return prisma.pmNotification.updateMany({
-                where: { userId: input.userId, read: false },
+                where: { userId: ctx.session.user.id, read: false },
                 data: { read: true }
             });
         }),
 
-    /**
-     * Delete old read notifications (cleanup).
-     */
-    clearRead: publicProcedure
-        .input(z.object({ userId: z.string() }))
-        .mutation(async ({ input }) => {
+    clearRead: protectedProcedure
+        .mutation(async ({ ctx }) => {
             return prisma.pmNotification.deleteMany({
-                where: { userId: input.userId, read: true }
+                where: { userId: ctx.session.user.id, read: true }
             });
         }),
 });

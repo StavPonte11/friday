@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ModuleSwitcher } from "@/components/shell/ModuleSwitcher";
 import { NotificationCenter } from "@/components/shell/NotificationCenter";
 import { UserMenu } from "@/components/shell/UserMenu";
+import { WorkspaceSwitcher } from "@/components/shell/WorkspaceSwitcher";
 import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText, Brain, CalendarRange, Plug, Target, FolderKanban, Crown, Layers2, Sparkles, Clock } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -52,7 +53,8 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 </button>
             </div>
 
-            <div className="p-2 border-b border-border">
+            <div className="p-2 border-b border-border space-y-2">
+                <WorkspaceSwitcher isOpen={isOpen} />
                 <ModuleSwitcher isOpen={isOpen} />
             </div>
 
