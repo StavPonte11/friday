@@ -55,7 +55,7 @@ export function OnboardingWizard({ open }: OnboardingWizardProps) {
 
     return (
         <Dialog open={open}>
-            <DialogContent className="sm:max-w-[450px]" HideCloseButton>
+            <DialogContent className="sm:max-w-[450px]" showCloseButton={false}>
                 <DialogHeader className="text-center sm:text-center pb-4">
                     <div className="flex justify-center mb-4">
                         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -125,5 +125,3 @@ export function OnboardingWizard({ open }: OnboardingWizardProps) {
     );
 }
 
-// Internal wrapper to hide the 'X' button
-function HideCloseButton() { return null; }

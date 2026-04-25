@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
-import { prisma } from "../../prisma";
+import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-import { auditLog } from "../../observability/logger";
+import { auditLog } from "@/lib/audit";
 
 export const adminInvitesRouter = router({
     list: adminProcedure

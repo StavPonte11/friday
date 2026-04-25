@@ -4,8 +4,10 @@ import { notFound } from 'next/navigation';
 export const locales = ['en', 'he'];
 
 export default getRequestConfig(async ({ requestLocale }) => {
-    const locale = await requestLocale;
-    if (!locale || !locales.includes(locale as any)) notFound();
+    let locale = await requestLocale;
+    if (!locale || !locales.includes(locale as any)) {
+        locale = 'en'; // Safe fallback
+    }
 
     return {
         locale,

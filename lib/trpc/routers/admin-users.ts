@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, adminProcedure } from '../init';
 import { prisma } from '@/lib/prisma';
 import { TRPCError } from '@trpc/server';
-import { auditLog } from '@/lib/observability/logger';
+import { auditLog } from '@/lib/audit';
 
 export const adminUsersRouter = router({
     list: adminProcedure

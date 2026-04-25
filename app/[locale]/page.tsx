@@ -1,9 +1,21 @@
 import Link from "next/link";
 import { Activity, Kanban, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/auth";
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 export default async function HomePage(props: { params: Promise<{ locale: string }> }) {
   const { locale } = await props.params;
+  const session = await getServerSession(authOptions);
+  const firstName = session?.user?.name?.split(" ")[0] ?? null;
+  const greeting = getGreeting();
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -16,6 +28,12 @@ export default async function HomePage(props: { params: Promise<{ locale: string
       </div>
 
       <div className="z-10 text-center max-w-3xl space-y-8">
+        {firstName && (
+          <p className="text-sm font-medium text-muted-foreground tracking-wide">
+            {greeting}, <span className="text-foreground font-semibold">{firstName}</span> 👋
+          </p>
+        )}
+
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
           F.R.I.D.A.Y.
         </h1>
@@ -56,3 +74,4 @@ export default async function HomePage(props: { params: Promise<{ locale: string
     </div>
   );
 }
+

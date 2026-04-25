@@ -4,23 +4,61 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import { Mail, Lock, LogIn, Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
-    const t = useTranslations("Auth");
     const router = useRouter();
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const handleLogin = async (e: React.FormEvent) => {
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("token");
+        if (token) {
+            setLoading(true);
+            signIn("credentials", { ssoToken: token, redirect: false }).then(res => {
+                if (res?.error) {
+                    setError("SSO login failed.");
+                    setLoading(false);
+                } else {
+                    router.push("/en/pm");
+                    router.refresh();
+                }
+            }).catch(() => {
+                setError("SSO login failed.");
+                setLoading(false);
+            });
+        }
+    }, [router]);
+
+    const handleLoginOrRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
 
         try {
+            if (isSignUp) {
+                const res = await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password, name }),
+                });
+                
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    setError(data.error || "Registration failed");
+                    setLoading(false);
+                    return;
+                }
+                // Automatically log in after registration
+            }
+
             const res = await signIn("credentials", {
                 email,
                 password,
@@ -28,9 +66,9 @@ export default function LoginPage() {
             });
 
             if (res?.error) {
-                setError(res.error);
+                setError("Invalid credentials. Please try again.");
             } else {
-                router.push("/en/pm"); // Redir to PM dashboard, or localized path
+                router.push("/en/pm");
                 router.refresh();
             }
         } catch (err) {
@@ -63,8 +101,21 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLoginOrRegister} className="space-y-4">
                     <div className="space-y-4">
+                        {isSignUp && (
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-mono text-sm"
+                                    required
+                                />
+                            </div>
+                        )}
                         <div className="relative">
                             <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <input
@@ -91,14 +142,24 @@ export default function LoginPage() {
 
                     {error && (
                         <div className="p-3 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
-                            Invalid credentials. Please try again.
+                            {error}
                         </div>
                     )}
 
                     <Button type="submit" disabled={loading} className="w-full font-bold">
                         {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}
-                        Secure Login
+                        {isSignUp ? "Create Account" : "Secure Login"}
                     </Button>
+                    
+                    <div className="text-center mt-4">
+                        <button 
+                            type="button" 
+                            onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
+                        >
+                            {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                        </button>
+                    </div>
                 </form>
 
                 <div className="mt-6 flex items-center justify-center before:flex-1 before:border-t before:border-white/10 after:flex-1 after:border-t after:border-white/10">

@@ -17,7 +17,7 @@ vi.mock('@/lib/prisma', () => ({
     }
 }));
 
-vi.mock('@/lib/observability/logger', () => ({
+vi.mock('@/lib/audit', () => ({
     auditLog: vi.fn()
 }));
 

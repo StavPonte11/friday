@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../init";
 import { prisma } from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
-import { checkPermission } from "../auth/rbac";
+import { checkPermission } from "@/lib/auth/rbac";
 
 export const pmActivityRouter = router({
     list: protectedProcedure

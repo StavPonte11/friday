@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useSession } from "next-auth/react";
 import { ModuleSwitcher } from "@/components/shell/ModuleSwitcher";
 import { NotificationCenter } from "@/components/shell/NotificationCenter";
 import { UserMenu } from "@/components/shell/UserMenu";
@@ -18,6 +19,16 @@ interface SidebarProps {
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const t = useTranslations("Shell");
     const pathname = usePathname();
+    const { data: session } = useSession();
+
+    const greeting = useMemo(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good morning";
+        if (hour < 18) return "Good afternoon";
+        return "Good evening";
+    }, []);
+
+    const firstName = session?.user?.name?.split(" ")[0] ?? "there";
 
     const pmNavItems = [
         { href: "/en/pm/dashboard", label: "Command Center", icon: Target },
@@ -59,6 +70,12 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-2">
+                {isOpen && (
+                    <div className="px-2 pt-3 pb-2 mb-1">
+                        <p className="text-xs text-muted-foreground">{greeting},</p>
+                        <p className="text-sm font-semibold text-foreground truncate">{firstName} 👋</p>
+                    </div>
+                )}
                 {isPmModule && (
                     <nav className="space-y-1">
                         {isOpen && <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 pt-2 pb-1 tracking-wider">Project</p>}
