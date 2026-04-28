@@ -27,12 +27,8 @@ export default withAuth(
                 // If no token and it's a private route, block
                 if (!token) return false;
 
-                // Admin routes require ADMIN+ role
-                if (path.includes('/admin')) {
-                    return token.role === 'ADMIN' || token.role === 'OWNER';
-                }
-
-                // Otherwise just require being logged in
+                // All authenticated users can access all routes
+                // Fine-grained access control is enforced at the tRPC procedure level
                 return true;
             }
         },

@@ -36,10 +36,13 @@ export function OnboardingWizard({ open }: OnboardingWizardProps) {
                 const ws = await createWorkspace.mutateAsync({ name: workspaceName });
                 
                 // 2. Create Project
+                let generatedKey = projectName.substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (generatedKey.length < 2) generatedKey = (generatedKey + "PRJ").substring(0, 3);
+                
                 await createProject.mutateAsync({ 
                     workspaceId: ws.id, 
                     name: projectName, 
-                    key: projectName.substring(0, 3).toUpperCase() 
+                    key: generatedKey 
                 });
 
                 // Set cookie and reload to enter the workspace

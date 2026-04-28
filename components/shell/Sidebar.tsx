@@ -7,7 +7,7 @@ import { ModuleSwitcher } from "@/components/shell/ModuleSwitcher";
 import { NotificationCenter } from "@/components/shell/NotificationCenter";
 import { UserMenu } from "@/components/shell/UserMenu";
 import { WorkspaceSwitcher } from "@/components/shell/WorkspaceSwitcher";
-import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText, Brain, CalendarRange, Plug, Target, FolderKanban, Crown, Layers2, Sparkles, Clock } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search, ListOrdered, LayoutDashboard, BarChart2, FileText, Brain, CalendarRange, Plug, Target, FolderKanban, Crown, Sparkles, ShieldCheck, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -41,6 +41,10 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         { href: "/en/pm/executive", label: "Executive", icon: Crown },
         { href: "/en/pm/reports", label: "Reports", icon: FileText },
         { href: "/en/pm/settings/integrations", label: "Integrations", icon: Plug },
+    ];
+
+    const adminNavItems = [
+        { href: "/en/admin/users", label: "Team Members", icon: ShieldCheck },
     ];
 
     const isPmModule = pathname?.includes("/pm/");
@@ -82,6 +86,26 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         {pmNavItems.map(({ href, label, icon: Icon }) => {
                             const segment = href.split("/").pop() ?? "";
                             const isActive = pathname?.endsWith(segment) || pathname?.includes(`/${segment}/`);
+                            return (
+                                <Link
+                                    key={href}
+                                    href={href}
+                                    className={`flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors ${isActive
+                                        ? "bg-primary/10 text-primary font-medium"
+                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                        }`}
+                                >
+                                    <Icon size={18} className="flex-shrink-0" />
+                                    {isOpen && <span>{label}</span>}
+                                </Link>
+                            );
+                        })}
+
+                        {/* Admin section */}
+                        {isOpen && <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 pt-4 pb-1 tracking-wider">Workspace</p>}
+                        {adminNavItems.map(({ href, label, icon: Icon }) => {
+                            const segment = href.split("/").pop() ?? "";
+                            const isActive = pathname?.includes("/admin");
                             return (
                                 <Link
                                     key={href}

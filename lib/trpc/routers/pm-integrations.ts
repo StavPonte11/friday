@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../init";
+import { router, publicProcedure, protectedProcedure } from "../init";
 import { 
     connectIntegration, 
     disconnectIntegration, 
@@ -11,18 +11,29 @@ import { prisma } from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
 
 export const pmIntegrationRouter = router({
-    connect: publicProcedure
+    connect: protectedProcedure
         .input(z.object({
             workspaceId: z.string().optional(),
-            userId: z.string().optional(),
             type: z.enum(["calendar", "git", "pm", "design"]),
             provider: z.string(),
             accessToken: z.string(),
             refreshToken: z.string().optional(),
             metadata: z.record(z.string(), z.unknown()).optional()
         }))
-        .mutation(async ({ input }) => {
-            return await connectIntegration(input as Parameters<typeof connectIntegration>[0]);
+        .mutation(async ({ input, ctx }) => {
+            const userId = ctx.session.user.id;
+
+            // If workspaceId provided, verify user is a member
+            if (input.workspaceId) {
+                const membership = await prisma.workspaceMember.findUnique({
+                    where: { workspaceId_userId: { workspaceId: input.workspaceId, userId } }
+                });
+                if (!membership) {
+                    throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this workspace" });
+                }
+            }
+
+            return await connectIntegration({ ...input, userId });
         }),
 
     disconnect: publicProcedure

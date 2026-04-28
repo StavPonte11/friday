@@ -98,14 +98,14 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
     const { data: session } = useSession();
     const [actioningRiskId, setActioningRiskId] = useState<string | null>(null);
     const [resolvedRiskIds, setResolvedRiskIds] = useState<Set<string>>(new Set());
-    const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+    const [toasts, setToasts] = useState<{ id: string; message: React.ReactNode }[]>([]);
 
     const createIssueMutation = trpc.pmIssues.create.useMutation();
 
-    const addToast = (message: string) => {
+    const addToast = (message: React.ReactNode) => {
         const id = Math.random().toString(36).slice(2);
         setToasts(t => [...t, { id, message }]);
-        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 6000);
     };
 
     const handleRiskAction = async (risk: Risk) => {
@@ -113,7 +113,7 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
 
         setActioningRiskId(risk.id);
         try {
-            await createIssueMutation.mutateAsync({
+            const newIssue = await createIssueMutation.mutateAsync({
                 projectId,
                 title: `[AI Mitigation] ${risk.title}`,
                 description: `Auto-generated mitigation task.\n\n**Risk:** ${risk.description}\n\n**Recommendation:** ${risk.recommendation}`,
@@ -122,7 +122,11 @@ export function IntelligencePanel({ projectId, sprintId }: IntelligencePanelProp
                 creatorId: userId,
             });
             setResolvedRiskIds(prev => new Set([...prev, risk.id]));
-            addToast(`✅ Mitigation task created for "${risk.title}"`);
+            addToast(
+                <span>
+                    ✅ Mitigation task created: <a href={`/en/pm/projects/${projectId}?issue=${newIssue.key}`} className="underline font-bold text-blue-500 hover:text-blue-400">{newIssue.key}</a>. Check your board!
+                </span>
+            );
         } catch (e) {
             addToast(`❌ Failed to create task. Check console.`);
         } finally {

@@ -3,6 +3,7 @@ import { Activity, Kanban, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
+import { InviteRedirector } from "@/components/onboarding/InviteRedirector";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -19,6 +20,7 @@ export default async function HomePage(props: { params: Promise<{ locale: string
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <InviteRedirector />
       {/* Abstract Background Decoration */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/20 rounded-full blur-[120px] pointer-events-none" />

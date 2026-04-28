@@ -10,9 +10,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const pathname = usePathname();
 
     const navItems = [
-        { href: "/admin/users", label: "Users", icon: Users },
+        { href: "/admin/users", label: "Team Members", icon: Users },
         { href: "/admin/groups", label: "Groups", icon: UsersRound },
-        { href: "/admin/settings", label: "Settings", icon: Settings },
+        { href: "/admin/settings", label: "Workspace Settings", icon: Settings },
     ];
 
     return (

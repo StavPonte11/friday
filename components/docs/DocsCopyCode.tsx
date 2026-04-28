@@ -15,8 +15,8 @@ export function DocsCopyCode({ children, className, ...props }: React.HTMLAttrib
   };
 
   return (
-    <div className="relative group my-6 rounded-2xl overflow-hidden border border-zinc-800 shadow-xl bg-zinc-950/80 backdrop-blur-xl">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
+    <div className="relative group my-8 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-900/90 ring-1 ring-white/10">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800/60 bg-zinc-800/40 backdrop-blur-md">
         <div className="flex items-center gap-2">
           <Terminal size={14} className="text-zinc-500" />
           <div className="flex gap-1.5 ml-2">
@@ -35,7 +35,7 @@ export function DocsCopyCode({ children, className, ...props }: React.HTMLAttrib
       <pre
         ref={preRef}
         {...props}
-        className={cn("p-4 overflow-x-auto text-sm leading-relaxed text-zinc-300 font-mono focus:outline-none scrollbar-thin scrollbar-thumb-zinc-800", className)}
+        className={cn("p-4 overflow-x-auto text-sm leading-relaxed text-zinc-100 font-mono focus:outline-none scrollbar-thin scrollbar-thumb-zinc-800", className)}
       >
         {children}
       </pre>

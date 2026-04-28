@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../init";
+import { router, publicProcedure, protectedProcedure } from "../init";
 import { prisma } from "@/lib/prisma";
 import { addProjectCreatorAsAdmin, getAccessibleProjects } from "@/lib/pm/rbac";
 
@@ -8,47 +8,74 @@ export const pmProjectsRouter = router({
      * List projects accessible to the current user.
      * Workspace admins see all projects; others see only member projects.
      */
-    list: publicProcedure
+    list: protectedProcedure
         .input(z.object({
             workspaceId: z.string().optional(),
-            userId: z.string().optional(),
         }).optional())
-        .query(async ({ input }) => {
-            if (input?.userId) {
-                return getAccessibleProjects(input.userId, input.workspaceId);
-            }
-            // Fallback for unauthenticated dev usage – returns all
-            const whereClause = input?.workspaceId ? { workspaceId: input.workspaceId, deletedAt: null } : { deletedAt: null };
-            return prisma.pmProject.findMany({
-                where: whereClause,
-                include: { _count: { select: { issues: true, sprints: true } } },
-                orderBy: { updatedAt: "desc" }
-            });
+        .query(async ({ input, ctx }) => {
+            const userId = ctx.session.user.id;
+            // Always strictly scope to what the user has access to
+            return getAccessibleProjects(userId, input?.workspaceId);
         }),
 
-    create: publicProcedure
+    create: protectedProcedure
         .input(z.object({
             workspaceId: z.string(),
             name: z.string().min(1),
             key: z.string().min(2).max(10).toUpperCase(),
             description: z.string().optional(),
-            creatorId: z.string().optional(),
         }))
-        .mutation(async ({ input }) => {
-            const { creatorId, ...projectData } = input;
+        .mutation(async ({ input, ctx }) => {
+            const creatorId = ctx.session.user.id;
 
-            // Validate unique key
-            const existing = await prisma.pmProject.findUnique({ where: { key: input.key } });
-            if (existing) throw new Error(`Project key ${input.key} already exists`);
+            // Validate unique key WITHIN the workspace only (not globally)
+            const existing = await prisma.pmProject.findFirst({
+                where: { key: input.key, workspaceId: input.workspaceId, deletedAt: null }
+            });
+            if (existing) throw new Error(`Project key "${input.key}" already exists in this workspace`);
 
-            const project = await prisma.pmProject.create({ data: projectData });
+            const project = await prisma.pmProject.create({ data: input });
 
             // Auto-add creator as PROJECT_ADMIN
-            if (creatorId) {
-                await addProjectCreatorAsAdmin(creatorId, project.id);
-            }
+            await addProjectCreatorAsAdmin(creatorId, project.id);
 
             return project;
+        }),
+
+    update: protectedProcedure
+        .input(z.object({
+            id: z.string(),
+            name: z.string().min(1).optional(),
+            description: z.string().optional(),
+        }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = ctx.session.user.id;
+            const { id, ...data } = input;
+            // Only PROJECT_ADMIN can update
+            const member = await prisma.pmProjectMember.findUnique({
+                where: { projectId_userId: { projectId: id, userId } }
+            });
+            if (!member || member.role !== "PROJECT_ADMIN") {
+                throw new Error("Only project admins can update this project");
+            }
+            return prisma.pmProject.update({ where: { id }, data });
+        }),
+
+    delete: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = ctx.session.user.id;
+            const member = await prisma.pmProjectMember.findUnique({
+                where: { projectId_userId: { projectId: input.id, userId } }
+            });
+            if (!member || member.role !== "PROJECT_ADMIN") {
+                throw new Error("Only project admins can delete this project");
+            }
+            await prisma.pmProject.update({
+                where: { id: input.id },
+                data: { deletedAt: new Date() }
+            });
+            return { success: true };
         }),
 
     get: publicProcedure

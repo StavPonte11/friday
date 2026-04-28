@@ -300,7 +300,7 @@ model PmProject {
   id          String   @id @default(cuid())
   workspaceId String
   teamId      String?
-  key         String   @unique // e.g., FPM
+  key         String   // unique per workspace — enforced via @@unique below
   name        String
   description String?
   workflow    Json?
@@ -322,6 +322,8 @@ model PmProject {
   boardAccess PmBoardAccess[]
   templates     PmIssueTemplate[] @relation("ProjectIssueTemplates")
   pmImportJobs  PmImportJob[]     @relation("ProjectImportJobs")
+
+  @@unique([workspaceId, key])
 }
 
 // ─────────────────────────────────────────────────────────────────────

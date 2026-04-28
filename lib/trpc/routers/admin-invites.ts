@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure, adminProcedure } from "../init";
+import { router, publicProcedure, protectedProcedure, adminProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
@@ -102,7 +102,7 @@ export const adminInvitesRouter = router({
             return { success: true };
         }),
 
-    validate: protectedProcedure
+    validate: publicProcedure
         .input(z.object({ token: z.string() }))
         .query(async ({ input }) => {
             const invite = await prisma.workspaceInvite.findUnique({

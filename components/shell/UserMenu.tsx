@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 import { User, LogOut, Settings } from "lucide-react";
 
 export function UserMenu({ isOpen }: { isOpen: boolean }) {
@@ -22,9 +23,9 @@ export function UserMenu({ isOpen }: { isOpen: boolean }) {
             </button>
             {isOpen && (
                 <div className="flex border-t border-border mt-1 pt-1 gap-1">
-                    <button className="flex-1 flex justify-center p-2 rounded-md hover:bg-accent text-muted-foreground">
+                    <Link href="/en/admin/users" className="flex-1 flex justify-center p-2 rounded-md hover:bg-accent text-muted-foreground transition-colors" title="Admin Console">
                         <Settings size={16} />
-                    </button>
+                    </Link>
                     <button
                         onClick={() => signOut()}
                         className="flex-1 flex justify-center p-2 rounded-md hover:bg-destructive/10 text-destructive"

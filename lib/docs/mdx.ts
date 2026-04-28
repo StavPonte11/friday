@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { compileMDX } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { DocsCallout } from "@/components/docs/DocsCallout";
 import { DocsCopyCode } from "@/components/docs/DocsCopyCode";
 
@@ -12,7 +13,12 @@ export async function getDocPage(slug: string) {
   
   const { content, frontmatter } = await compileMDX<{ title: string; description?: string }>({
     source: raw,
-    options: { parseFrontmatter: true },
+    options: { 
+      parseFrontmatter: true,
+      mdxOptions: {
+        remarkPlugins: [remarkGfm],
+      }
+    },
     components: {
       Callout: DocsCallout,
       pre: DocsCopyCode,

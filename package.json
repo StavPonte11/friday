@@ -20,7 +20,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:vitest": "vitest run",
-    "test:all": "npm run test && npm run test:vitest && npm run test:e2e"
+    "test:all": "npm run test && npm run test:vitest && npm run test:e2e",
+    "workers:start": "npx tsx workers/index.ts",
+    "workers:calendar": "WORKER_TYPE=calendar npx tsx workers/index.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -78,6 +80,7 @@
     "react-hook-form": "^7.72.1",
     "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
+    "remark-gfm": "^4.0.1",
     "shiki": "^3.23.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",

@@ -2,11 +2,14 @@
 
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { FolderKanban, Plus, Clock, Search, Workflow, Target, Loader2, AlertCircle, Settings } from "lucide-react";
+import { FolderKanban, Plus, Clock, Search, Workflow, Target, Loader2, AlertCircle, Settings, MoreVertical, Pencil, Trash2, ChevronRight } from "lucide-react";
 import { ProjectWorkflowEditor } from "@/components/issues/ProjectWorkflowEditor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useLocale } from "next-intl";
+import { useWorkspace } from "@/hooks/use-workspace";
 
 // ─── Skeleton card shown while data loads ───────────────────────────────────
 function ProjectCardSkeleton() {
@@ -39,19 +42,28 @@ export default function ProjectsPage() {
     const [description, setDescription] = useState("");
     const [formError, setFormError] = useState("");
     const [configProjectId, setConfigProjectId] = useState<string | null>(null);
+    const [editProject, setEditProject] = useState<{ id: string; name: string; description: string } | null>(null);
 
-    // Fetch the first available workspace — replaces the hardcoded MOCK id
-    const { data: workspaces, isLoading: wsLoading } = trpc.workspaces.list.useQuery(undefined);
-    const workspaceId = workspaces?.[0]?.id ?? null;
+    const { workspace, isLoading: wsLoading } = useWorkspace();
+    const workspaceId = workspace?.id ?? null;
 
     const utils = trpc.useUtils();
 
     const { data: projects, isLoading: projectsLoading } =
-        trpc.pmProjects.list.useQuery(undefined);
+        trpc.pmProjects.list.useQuery(
+            { workspaceId: workspaceId as string },
+            { enabled: !!workspaceId }
+        );
 
     const createProject = trpc.pmProjects.create.useMutation();
+    const updateProject = trpc.pmProjects.update.useMutation({
+        onSuccess: () => { utils.pmProjects.list.invalidate(); setEditProject(null); }
+    });
+    const deleteProject = trpc.pmProjects.delete.useMutation({
+        onSuccess: () => utils.pmProjects.list.invalidate()
+    });
 
-    const isLoading = wsLoading || projectsLoading;
+    const isLoading = wsLoading || (projectsLoading && !!workspaceId);
 
     const filtered =
         projects?.filter(
@@ -74,7 +86,6 @@ export default function ProjectsPage() {
     }
 
     function handleKeyInput(val: string) {
-        // Auto-uppercase and strip non-alpha-numeric chars
         setKey(val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10));
     }
 
@@ -91,6 +102,13 @@ export default function ProjectsPage() {
             onError: (err: any) => {
                 setFormError(err.message || "Failed to create project.");
             }
+        });
+    }
+
+    function handleDelete(projectId: string) {
+        if (!confirm("Are you sure you want to archive this project? This action cannot be undone.")) return;
+        deleteProject.mutate({ id: projectId }, {
+            onError: (err: any) => alert(err.message)
         });
     }
 
@@ -150,7 +168,7 @@ export default function ProjectsPage() {
             )}
 
             {/* Empty state */}
-            {!isLoading && filtered.length === 0 && (
+            {!isLoading && workspaceId && filtered.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border rounded-lg text-muted-foreground">
                     <FolderKanban size={48} className="mb-4 opacity-50" />
                     <p className="font-medium">No projects found.</p>
@@ -174,8 +192,8 @@ export default function ProjectsPage() {
                                     </div>
                                     <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button 
+                                <div className="flex items-center gap-1">
+                                    <button
                                         onClick={(e) => {
                                             e.preventDefault();
                                             setConfigProjectId(project.id);
@@ -183,8 +201,37 @@ export default function ProjectsPage() {
                                         className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
                                         title="Configure Workflow"
                                     >
-                                        <Settings size={16} />
+                                        <Settings size={15} />
                                     </button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button
+                                                onClick={(e) => e.preventDefault()}
+                                                className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                                            >
+                                                <MoreVertical size={15} />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-40">
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setEditProject({ id: project.id, name: project.name, description: project.description || "" });
+                                                }}
+                                            >
+                                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleDelete(project.id);
+                                                }}
+                                            >
+                                                <Trash2 className="w-4 h-4 mr-2" /> Archive
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                     <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-muted-foreground border border-border/50">
                                         {project.key}
                                     </span>
@@ -227,7 +274,7 @@ export default function ProjectsPage() {
                                 <input
                                     type="text"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => { setName(e.target.value); if (!key) setKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6)); }}
                                     className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
                                     placeholder="E.g. Engineering Platform"
                                     autoFocus
@@ -257,7 +304,6 @@ export default function ProjectsPage() {
                             </div>
                         </div>
 
-                        {/* Inline error */}
                         {formError && (
                             <div className="flex items-center gap-2 text-sm text-destructive mb-4 bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
                                 <AlertCircle size={14} className="shrink-0" />
@@ -291,6 +337,49 @@ export default function ProjectsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Edit Project Modal */}
+            <Dialog open={!!editProject} onOpenChange={(open) => !open && setEditProject(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Project</DialogTitle>
+                    </DialogHeader>
+                    {editProject && (
+                        <div className="space-y-4 py-2">
+                            <div>
+                                <label className="text-sm font-medium mb-1 block">Project Name</label>
+                                <input
+                                    type="text"
+                                    value={editProject.name}
+                                    onChange={(e) => setEditProject({ ...editProject, name: e.target.value })}
+                                    className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
+                                    autoFocus
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium mb-1 block">Description</label>
+                                <textarea
+                                    value={editProject.description}
+                                    onChange={(e) => setEditProject({ ...editProject, description: e.target.value })}
+                                    rows={3}
+                                    className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button variant="outline" onClick={() => setEditProject(null)}>Cancel</Button>
+                                <Button
+                                    onClick={() => updateProject.mutate({ id: editProject.id, name: editProject.name, description: editProject.description })}
+                                    disabled={updateProject.isPending}
+                                >
+                                    {updateProject.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             {/* Workflow Config Modal */}
             <Dialog open={!!configProjectId} onOpenChange={(open) => !open && setConfigProjectId(null)}>
                 <DialogContent className="sm:max-w-[600px]">
