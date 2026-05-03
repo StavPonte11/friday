@@ -9,8 +9,11 @@ export const QUEUES = {
     RISK_DETECTION: "friday.pm.ai.risk-detection",
     NOTIFICATIONS: "friday.pm.notifications",
     EMAIL_SYNC: "friday.pm.email.sync",
-    CALENDAR_SYNC: "friday.pm.calendar.sync",
+    CALENDAR_SYNC: "friday.pm.calendar.sync",   // bidirectional push+pull jobs
+    GIT_LINK_SYNC: "friday.pm.git.link-sync",   // manual link sync / post-webhook reconcile
+    FIGMA_SYNC: "friday.pm.figma.sync",         // future: poll Figma for changes
 } as const;
+
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
 

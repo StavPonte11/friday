@@ -7,19 +7,20 @@ description: Deep observability for LLMs and Agents
 
 Building agents without observability is like flying blind. If an agent loops infinitely, hallucinates a response, or incorrectly maps a tool argument, you need to know *exactly* what prompted the error.
 
-FRIDAY Traces is our answer: a built-in telemetry module utilizing Langfuse.
+FRIDAY Traces is our answer: a built-in telemetry module fully integrated with **Langfuse**. Every agent interaction is automatically traced from start to finish.
 
-<Callout type="important">
-  Trace data is inherently noisy. We optimize storage by only logging complete ReAct loop iterations and discarding intermediate embeddings unless specifically flagged for debugging.
+<Callout type="info">
+  We trace every node transition in the LangGraph, providing visibility into the "thought process" of the agent before it executes a tool.
 </Callout>
 
 ## Working with Traces
 
 Whenever the FAB (Floating Action Button) Agent is invoked via the Command Bar, a Trace ID is generated. 
 
-1. **Spans:** The trace is broken down into spans: `Planning`, `Tool Selection`, `Execution`, `Observation`.
-2. **Generations:** Any LLM payload is logged under a generation metric, including prompt tokens, completion tokens, and total latency.
-3. **Trace Dashboard:** Accessible via `/traces`, this dashboard gives team leads a macro-view of AI expenditure and error rates.
+1. **Graph Nodes:** The trace shows transitions between nodes: `rag`, `agent`, `tools`.
+2. **Generations:** Any LLM payload is logged with input/output, model metadata, token counts, and cost estimation via Langfuse.
+3. **Observations:** Tool outputs are captured as observations, allowing you to debug exactly what data the agent received from the database.
+4. **Trace Dashboard:** Accessible via `/traces`, this dashboard gives team leads a macro-view of AI health, success rates, and latency.
 
 ## Integrating Custom Agents
 

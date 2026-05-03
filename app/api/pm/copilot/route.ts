@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getLLMProvider } from "@/lib/ai/provider";
+import { runFridayAgent } from "@/lib/ai/agent-runtime";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/auth";
 
 export async function POST(req: Request) {
     try {
@@ -9,44 +11,33 @@ export async function POST(req: Request) {
             return NextResponse.json({ reply: "Please ask me something!" });
         }
 
-        // Gather lightweight context
-        const [projects, recentIssues] = await Promise.all([
-            prisma.pmProject.findMany({ take: 5, select: { name: true, key: true } }),
-            prisma.pmIssue.findMany({
-                where: {
-                    ...(projectId ? { projectId } : {}),
-                    deletedAt: null,
-                    status: { in: ["BLOCKED", "IN_PROGRESS", "TODO"] },
-                },
-                take: 10,
-                orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
-                select: { key: true, title: true, status: true, priority: true, dueDate: true },
-            }),
-        ]);
+        const session = await getServerSession(authOptions);
+        const userId = session?.user?.id;
 
-        const blockedCount = recentIssues.filter(i => i.status === "BLOCKED").length;
-        const urgentCount = recentIssues.filter(i => i.priority === "URGENT").length;
-        const overdue = recentIssues.filter(i => i.dueDate && new Date(i.dueDate) < new Date()).length;
+        const project = await prisma.pmProject.findUnique({
+            where: { id: projectId },
+            select: { workspaceId: true },
+        });
 
-        const contextBlob = [
-            `Projects: ${projects.map(p => `${p.key} (${p.name})`).join(", ")}`,
-            `Active issues (top 10): ${recentIssues.map(i => `${i.key} [${i.status}/${i.priority}]${i.dueDate ? ` due ${new Date(i.dueDate).toLocaleDateString()}` : ""}: ${i.title}`).join(" | ")}`,
-            `Summary: ${blockedCount} blockers, ${urgentCount} urgent, ${overdue} overdue.`,
-        ].join("\n");
+        if (!project) {
+            return NextResponse.json({ reply: "Project not found." });
+        }
 
-        const systemPrompt = `You are FRIDAY, an AI project management copilot. You have access to the following live project context:\n\n${contextBlob}\n\nAnswer the user's question concisely (2-4 sentences max). When listing items, use bullet points. If applicable, suggest a concrete action. Be direct and confident.`;
+        // We use a constant sessionId for now per project+user to maintain simple short-term memory
+        const sessionId = `copilot-${projectId}-${userId || 'anon'}`;
 
-        const llm = getLLMProvider();
-        const response = await llm.invoke([
-            { role: "system", content: systemPrompt },
-            { role: "user", content: message },
-        ] as any);
+        const result = await runFridayAgent(message, {
+            projectId,
+            workspaceId: project.workspaceId,
+            sessionId,
+            userId,
+        });
 
-        const reply = typeof response.content === "string"
-            ? response.content
-            : "I analyzed the project context but couldn't generate a response right now.";
-
-        return NextResponse.json({ reply });
+        return NextResponse.json({ 
+            reply: result.reply,
+            toolsUsed: result.toolsUsed,
+            ragContextUsed: result.ragContextUsed
+        });
     } catch (err: any) {
         console.error("[copilot] Error:", err.message);
         // Graceful fallback if LLM is unavailable

@@ -28,7 +28,7 @@ export default function NotFound() {
                         Page not found
                     </h1>
                     <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                        This page doesn't exist or may have been moved. Let's get you back on track.
+                        This page doesn&apos;t exist or may have been moved. Let&apos;s get you back on track.
                     </p>
                 </div>
 
@@ -56,3 +56,4 @@ export default function NotFound() {
         </div>
     );
 }
+

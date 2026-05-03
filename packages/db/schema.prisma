@@ -1,6 +1,6 @@
 generator client {
-  provider        = "prisma-client-js"
-  output          = "../../node_modules/.prisma/client"
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -12,26 +12,26 @@ datasource db {
 // -----------------------------------------------------------------------------
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?   // bcrypt hash; null for OAuth-only users
-  isActive      Boolean   @default(true)
-  timezone      String    @default("UTC")
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  emailVerified      DateTime?
+  image              String?
+  passwordHash       String? // bcrypt hash; null for OAuth-only users
+  isActive           Boolean   @default(true)
+  timezone           String    @default("UTC")
   notificationConfig Json?
-  ssoProvider   String?
-  ssoId         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  ssoProvider        String?
+  ssoId              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   accounts         Account[]
   sessions         Session[]
   workspaceMembers WorkspaceMember[]
   apiKeys          ApiKey[]
-  auditLogs        AuditLog[]        @relation("UserAuditLogs")
-  integrations     Integration[]     @relation("UserIntegrations")
+  auditLogs        AuditLog[]             @relation("UserAuditLogs")
+  integrations     Integration[]          @relation("UserIntegrations")
   groupMembers     WorkspaceGroupMember[]
 
   // PM Module opposite relations
@@ -47,7 +47,7 @@ model User {
   pmRecentViews    PmRecentView[]    @relation("UserRecentViews")
   pmTimeLogs       PmTimeLog[]       @relation("UserTimeLogs")
 
-  sentInvites      WorkspaceInvite[] @relation("UserSentInvites")
+  sentInvites WorkspaceInvite[] @relation("UserSentInvites")
 }
 
 model Session {
@@ -59,18 +59,18 @@ model Session {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -93,24 +93,24 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members   WorkspaceMember[]
-  modules   WorkspaceModule[]
-  apiKeys   ApiKey[]
-  auditLogs AuditLog[]
-  integrations Integration[] @relation("WorkspaceIntegrations")
-  groups    WorkspaceGroup[]
-  invites   WorkspaceInvite[]
+  members      WorkspaceMember[]
+  modules      WorkspaceModule[]
+  apiKeys      ApiKey[]
+  auditLogs    AuditLog[]
+  integrations Integration[]     @relation("WorkspaceIntegrations")
+  groups       WorkspaceGroup[]
+  invites      WorkspaceInvite[]
 
   // PM Module opposite relations
-  pmTeams    PmTeam[]
-  pmProjects PmProject[]
-  pmIssues   PmIssue[]
-  pmSprints  PmSprint[]
-  pmVersions PmVersion[]
-  pmComments PmComment[]
-  pmLabels   PmLabel[]
-  pmTemplates PmIssueTemplate[] @relation("WorkspaceIssueTemplates")
-  pmImportJobs PmImportJob[]    @relation("WorkspaceImportJobs")
+  pmTeams      PmTeam[]
+  pmProjects   PmProject[]
+  pmIssues     PmIssue[]
+  pmSprints    PmSprint[]
+  pmVersions   PmVersion[]
+  pmComments   PmComment[]
+  pmLabels     PmLabel[]
+  pmTemplates  PmIssueTemplate[] @relation("WorkspaceIssueTemplates")
+  pmImportJobs PmImportJob[]     @relation("WorkspaceImportJobs")
 }
 
 // Groups within a workspace (org-level teams / access groups)
@@ -187,9 +187,9 @@ enum InviteStatus {
 }
 
 model WorkspaceInvite {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   email       String
-  token       String       @unique
+  token       String        @unique
   workspaceId String
   role        WorkspaceRole @default(MEMBER)
   status      InviteStatus  @default(PENDING)
@@ -238,19 +238,20 @@ model AuditLog {
 // -----------------------------------------------------------------------------
 
 model Integration {
-  id            String   @id @default(cuid())
-  userId        String?  // Can be user-specific (e.g. personal calendar)
-  workspaceId   String?  // Or workspace-specific (e.g. Jira import for whole workspace)
-  type          String   // "calendar", "git", "pm", "design"
-  provider      String   // "google", "outlook", "github", "gitlab", "jira", "figma"
-  accessToken   String   // encrypted
-  refreshToken  String?  // encrypted
-  metadata      Json?    // to store external IDs, custom sync states, webhook URLs
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String    @id @default(cuid())
+  userId       String? // Can be user-specific (e.g. personal calendar)
+  workspaceId  String? // Or workspace-specific (e.g. Jira import for whole workspace)
+  type         String // "calendar", "git", "pm", "design"
+  provider     String // "google", "outlook", "github", "gitlab", "jira", "figma"
+  accessToken  String // encrypted
+  refreshToken String? // encrypted
+  expiresAt    DateTime? // when access token expires — used for refresh logic
+  metadata     Json? // to store external IDs, custom sync states, webhook URLs
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  user          User?      @relation("UserIntegrations", fields: [userId], references: [id], onDelete: Cascade)
-  workspace     Workspace? @relation("WorkspaceIntegrations", fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?      @relation("UserIntegrations", fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation("WorkspaceIntegrations", fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([workspaceId])
@@ -262,12 +263,12 @@ model Integration {
 // -----------------------------------------------------------------------------
 
 model PmTeam {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   deletedById String?
 
@@ -297,31 +298,31 @@ model PmProjectMember {
 }
 
 model PmProject {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
   teamId      String?
-  key         String   // unique per workspace — enforced via @@unique below
+  key         String // unique per workspace — enforced via @@unique below
   name        String
   description String?
   workflow    Json?
-  isPrivate   Boolean  @default(false) // if true, only explicit grants can access
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isPrivate   Boolean   @default(false) // if true, only explicit grants can access
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   deletedById String?
 
-  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  team        PmTeam?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  issues      PmIssue[]
-  sprints     PmSprint[]
-  labels      PmLabel[]
-  members     PmProjectMember[]
-  versions    PmVersion[]
-  webhooks    PmWebhook[]
-  savedViews  PmSavedView[]
-  boardAccess PmBoardAccess[]
-  templates     PmIssueTemplate[] @relation("ProjectIssueTemplates")
-  pmImportJobs  PmImportJob[]     @relation("ProjectImportJobs")
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team         PmTeam?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  issues       PmIssue[]
+  sprints      PmSprint[]
+  labels       PmLabel[]
+  members      PmProjectMember[]
+  versions     PmVersion[]
+  webhooks     PmWebhook[]
+  savedViews   PmSavedView[]
+  boardAccess  PmBoardAccess[]
+  templates    PmIssueTemplate[] @relation("ProjectIssueTemplates")
+  pmImportJobs PmImportJob[]     @relation("ProjectImportJobs")
 
   @@unique([workspaceId, key])
 }
@@ -341,14 +342,14 @@ enum PmBoardRole {
 }
 
 model PmBoardAccess {
-  id         String            @id @default(cuid())
-  projectId  String
-  entityType PmBoardEntityType
-  entityId   String            // userId or groupId
-  role       PmBoardRole       @default(VIEWER)
-  grantedById String?          // who granted this
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  id          String            @id @default(cuid())
+  projectId   String
+  entityType  PmBoardEntityType
+  entityId    String // userId or groupId
+  role        PmBoardRole       @default(VIEWER)
+  grantedById String? // who granted this
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   project PmProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   group   WorkspaceGroup? @relation("GroupBoardAccess", fields: [entityId], references: [id], onDelete: Cascade, map: "PmBoardAccess_group_fk")
@@ -395,10 +396,10 @@ model PmIssue {
   remainingTime    Int? // minutes
   customFields     Json?
 
-  dueDate          DateTime?
-  startDate        DateTime?
-  slaPolicy        String?
-  cronSchedule     String?
+  dueDate      DateTime?
+  startDate    DateTime?
+  slaPolicy    String?
+  cronSchedule String?
 
   parentId   String?
   assigneeId String?
@@ -406,32 +407,34 @@ model PmIssue {
   sprintId   String?
   versionId  String?
 
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   deletedById String?
 
-  project   PmProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent    PmIssue?   @relation("IssueToIssue", fields: [parentId], references: [id], onDelete: SetNull)
-  children  PmIssue[]  @relation("IssueToIssue")
-  assignee  User?      @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  creator   User       @relation("IssueCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  sprint    PmSprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  project     PmProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent      PmIssue?   @relation("IssueToIssue", fields: [parentId], references: [id], onDelete: SetNull)
+  children    PmIssue[]  @relation("IssueToIssue")
+  assignee    User?      @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creator     User       @relation("IssueCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  sprint      PmSprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   versionInfo PmVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull) // Renamed due to field collision
 
-  comments    PmComment[]
-  labels      PmLabel[]         @relation("IssueLabels")
-  activities  PmIssueActivity[]
-  attachments PmAttachment[]
-  snapshots   PmIssueSnapshot[]
-  gitlabLinks PmGitLabLink[]
-  checklists  PmIssueChecklist[]
-  sourceLinks PmIssueLink[]      @relation("SourceLinks")
-  targetLinks PmIssueLink[]      @relation("TargetLinks")
-  timeLogs    PmTimeLog[]
-  gitLinks    PmGitLink[]
+  comments      PmComment[]
+  labels        PmLabel[]           @relation("IssueLabels")
+  activities    PmIssueActivity[]
+  attachments   PmAttachment[]
+  snapshots     PmIssueSnapshot[]
+  gitlabLinks   PmGitLabLink[]
+  checklists    PmIssueChecklist[]
+  sourceLinks   PmIssueLink[]       @relation("SourceLinks")
+  targetLinks   PmIssueLink[]       @relation("TargetLinks")
+  timeLogs      PmTimeLog[]
+  gitLinks      PmGitLink[]
+  calendarLinks IssueCalendarLink[]
+  designLinks   IssueDesignLink[]
 }
 
 model PmIssueSnapshot {
@@ -488,19 +491,19 @@ model PmComment {
   deletedAt   DateTime?
   deletedById String?
 
-  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  issue     PmIssue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent    PmComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies   PmComment[] @relation("CommentReplies")
+  workspace Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  issue     PmIssue            @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author    User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    PmComment?         @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   PmComment[]        @relation("CommentReplies")
   mentions  PmCommentMention[]
 }
 
 model PmCommentMention {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   commentId String
   userId    String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   comment PmComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
@@ -580,14 +583,14 @@ model PmWebhook {
 }
 
 model PmGitLabLink {
-  id             String   @id @default(cuid())
-  issueId        String
+  id              String   @id @default(cuid())
+  issueId         String
   gitlabProjectId Int
-  gitlabIssueId  Int
-  gitlabUrl      String
-  synced         Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  gitlabIssueId   Int
+  gitlabUrl       String
+  synced          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
 
@@ -599,7 +602,11 @@ model PmSavedView {
   projectId String
   userId    String
   name      String
-  filters   Json
+  filters   Json     @default("{}")
+  columns   String[] @default([]) // visible column keys, empty = all
+  groupBy   String? // field to group by: "status" | "assignee" | "label"
+  sortBy    String? // field to sort by
+  sortDir   String? // "asc" | "desc"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -612,16 +619,16 @@ model PmSavedView {
 // -----------------------------------------------------------------------------
 
 model PmIssueTemplate {
-  id               String          @id @default(cuid())
-  workspaceId      String?
-  projectId        String
-  name             String
-  description      String?
-  defaultType      PmIssueType     @default(TASK)
-  defaultPriority  PmIssuePriority @default(NONE)
-  defaultLabels    String[]
-  fields           Json            // Contains any prefilled description or checklist items
-  createdAt        DateTime        @default(now())
+  id              String          @id @default(cuid())
+  workspaceId     String?
+  projectId       String
+  name            String
+  description     String?
+  defaultType     PmIssueType     @default(TASK)
+  defaultPriority PmIssuePriority @default(NONE)
+  defaultLabels   String[]
+  fields          Json // Contains any prefilled description or checklist items
+  createdAt       DateTime        @default(now())
 
   workspace Workspace? @relation("WorkspaceIssueTemplates", fields: [workspaceId], references: [id], onDelete: Cascade)
   project   PmProject  @relation("ProjectIssueTemplates", fields: [projectId], references: [id], onDelete: Cascade)
@@ -636,7 +643,7 @@ model PmIssueChecklist {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  issue       PmIssue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
 }
 
 enum PmLinkType {
@@ -647,49 +654,49 @@ enum PmLinkType {
 }
 
 model PmIssueLink {
-  id             String     @id @default(cuid())
-  sourceIssueId  String
-  targetIssueId  String
-  type           PmLinkType @default(RELATES_TO)
-  createdAt      DateTime   @default(now())
+  id            String     @id @default(cuid())
+  sourceIssueId String
+  targetIssueId String
+  type          PmLinkType @default(RELATES_TO)
+  createdAt     DateTime   @default(now())
 
-  sourceIssue    PmIssue    @relation("SourceLinks", fields: [sourceIssueId], references: [id], onDelete: Cascade)
-  targetIssue    PmIssue    @relation("TargetLinks", fields: [targetIssueId], references: [id], onDelete: Cascade)
+  sourceIssue PmIssue @relation("SourceLinks", fields: [sourceIssueId], references: [id], onDelete: Cascade)
+  targetIssue PmIssue @relation("TargetLinks", fields: [targetIssueId], references: [id], onDelete: Cascade)
 
   @@unique([sourceIssueId, targetIssueId, type])
 }
 
 model PmFavorite {
-  id          String   @id @default(cuid())
-  userId      String
-  entityType  String   // "project" | "issue" | "view"
-  entityId    String
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  entityType String // "project" | "issue" | "view"
+  entityId   String
+  createdAt  DateTime @default(now())
 
-  user        User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entityType, entityId])
 }
 
 model PmRecentView {
-  id          String   @id @default(cuid())
-  userId      String
-  entityType  String   // "project" | "issue"
-  entityId    String
-  viewedAt    DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  entityType String // "project" | "issue"
+  entityId   String
+  viewedAt   DateTime @default(now())
 
-  user        User     @relation("UserRecentViews", fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("UserRecentViews", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entityType, entityId])
 }
 
 model FeatureFlag {
-  id             String   @id @default(cuid())
-  key            String   @unique
-  isEnabled      Boolean  @default(false)
-  workspaceIds   String[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(cuid())
+  key          String   @unique
+  isEnabled    Boolean  @default(false)
+  workspaceIds String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -724,23 +731,23 @@ enum ImportJobStatus {
 }
 
 model PmImportJob {
-  id          String          @id @default(cuid())
-  workspaceId String
-  projectId   String?
-  source      String          // "jira" | "github" | "csv"
-  status      ImportJobStatus @default(PENDING)
-  progress    Int             @default(0)   // 0–100
-  total       Int             @default(0)
-  importedCount Int           @default(0)
-  error       String?
-  metadata    Json?           // store original config
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id            String          @id @default(cuid())
+  workspaceId   String
+  projectId     String?
+  source        String // "jira" | "github" | "csv"
+  status        ImportJobStatus @default(PENDING)
+  progress      Int             @default(0) // 0–100
+  total         Int             @default(0)
+  importedCount Int             @default(0)
+  error         String?
+  metadata      Json? // store original config
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  workspace   Workspace @relation("WorkspaceImportJobs", fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     PmProject?  @relation("ProjectImportJobs", fields: [projectId], references: [id], onDelete: SetNull)
+  workspace Workspace  @relation("WorkspaceImportJobs", fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   PmProject? @relation("ProjectImportJobs", fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
 }
@@ -759,7 +766,7 @@ enum GitPrStatus {
 model PmGitLink {
   id        String      @id @default(cuid())
   issueId   String
-  provider  String      // "github" | "gitlab"
+  provider  String // "github" | "gitlab"
   repoName  String
   prNumber  Int
   prTitle   String?
@@ -776,21 +783,83 @@ model PmGitLink {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Calendar Links (Issue <-> External Calendar Event)
+// ─────────────────────────────────────────────────────────────────────
+
+model IssueCalendarLink {
+  id              String   @id @default(cuid())
+  issueId         String
+  integrationId   String // FK to Integration (which user/workspace calendar)
+  externalEventId String // event ID on the provider side
+  provider        String // "google" | "outlook"
+  calendarId      String // "primary" or specific calendar ID
+  syncedAt        DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, integrationId])
+  @@unique([integrationId, externalEventId])
+  @@index([issueId])
+  @@index([integrationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Design Links (Issue <-> Figma File/Node)
+// ─────────────────────────────────────────────────────────────────────
+
+model IssueDesignLink {
+  id        String   @id @default(cuid())
+  issueId   String
+  provider  String   @default("figma") // "figma" for now
+  fileId    String // Figma file key
+  nodeId    String? // Optional frame/component node ID
+  url       String // Full Figma URL
+  title     String? // Display name (fetched from Figma API)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue PmIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, fileId, nodeId])
+  @@index([issueId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Executive Dashboard Share Tokens
 // ─────────────────────────────────────────────────────────────────────
 
 model PmShareToken {
-  id          String    @id @default(cuid())
-  token       String    @unique
-  workspaceId String
-  projectId   String?
-  createdById String?
-  expiresAt   DateTime?
-  viewCount   Int       @default(0)
-  isPublic    Boolean   @default(false)
+  id           String    @id @default(cuid())
+  token        String    @unique
+  workspaceId  String
+  projectId    String?
+  createdById  String?
+  expiresAt    DateTime?
+  viewCount    Int       @default(0)
+  isPublic     Boolean   @default(false)
   passwordHash String?
-  createdAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([token])
 }
 
+model PmAiSession {
+  id        String   @id
+  userId    String?
+  projectId String
+  messages  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MemoryEmbedding {
+  id        String                       @id @default(uuid())
+  issueId   String
+  content   String
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                     @default(now())
+
+  @@index([issueId])
+}

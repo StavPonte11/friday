@@ -5,7 +5,7 @@ description: FRIDAY's Model Context Protocol — AI agents that act on your proj
 
 ## What are FRIDAY Agents?
 
-In traditional systems, you run scripts manually. In FRIDAY, you talk to Agents. An Agent is an LLM (Large Language Model) paired with a defined set of **tools** exposed via the **Model Context Protocol (MCP)**. The agent reads your intent, selects the right tools, executes them, and feeds results back into the conversation loop until the goal is achieved.
+In traditional systems, you run scripts manually. In FRIDAY, you talk to Agents. An Agent is an autonomous system powered by **LangGraph** paired with a defined set of **tools** exposed via the **Model Context Protocol (MCP)**. The agent reads your intent, selects the right tools, executes them, and feeds results back into the conversation loop until the goal is achieved.
 
 ---
 
@@ -14,16 +14,20 @@ In traditional systems, you run scripts manually. In FRIDAY, you talk to Agents.
 ```
 User → "Move all delayed tasks to the backlog"
   ↓
-Agent (Reason): Which tasks are delayed? What does "move to backlog" mean?
+RAG Node: Fetch relevant project history and documentation context.
   ↓
-Agent (Act): calls pmIssues.list({ status: "IN_PROGRESS", overdue: true })
+Agent Node (Reason): Which tasks are delayed? What does "move to backlog" mean?
   ↓
-Agent (Observe): receives 3 issues
+Tools Node (Act): calls getIssues({ status: "IN_PROGRESS", overdue: true })
   ↓
-Agent (Act): calls pmIssues.updateStatus({ ids: [...], status: "TODO", sprintId: null })
+Agent Node (Observe): receives 3 issues
   ↓
-Agent (Observe): success → respond to user
+Tools Node (Act): calls updateIssue({ ids: [...], status: "TODO", sprintId: null })
+  ↓
+Agent Node (Observe): success → respond to user
 ```
+
+The loop is managed by **LangGraph**, ensuring state is maintained between tool calls and reasoning steps.
 
 ---
 
@@ -41,13 +45,17 @@ This route implements the full **Model Context Protocol** — it can be connecte
 
 | Tool | Description |
 |---|---|
-| `listProjects` | Returns all active projects with metadata |
 | `getIssues` | Fetch issues with filters (status, priority, sprint) |
 | `createIssue` | Create a new issue in a project |
-| `updateIssueStatus` | Transition an issue to a new workflow state |
-| `getSprintHealth` | Returns velocity, blockers, and confidence score |
-| `generateManagerReport` | Triggers the AI manager report generator |
-| `detectRisks` | Runs the risk detection engine for a project |
+| `updateIssue` | Update an existing issue's properties |
+| `assignIssue` | Reassign an issue to a specific user |
+| `getSprintData` | Fetch current and upcoming sprint details |
+| `searchIssues` | Semantic/Full-text search across all issues |
+| `getTeamWorkload` | Analyze team capacity and issue distribution |
+
+<Callout type="warning">
+  Tools like `createIssue`, `updateIssue`, and `assignIssue` are marked as **Destructive**. The agent runtime requires explicit UI confirmation before these actions are finalized.
+</Callout>
 
 ### Connecting an External MCP Client
 
@@ -106,6 +114,34 @@ To use an OpenAI-compatible API instead:
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o
 ```
+
+---
+
+## Multi-Agent Orchestration
+
+For complex tasks like sprint planning or health audits, FRIDAY uses an **Orchestrator** pattern. This coordinates specialized sub-agents:
+
+1. **Planner Agent**: Analyzes the backlog and suggests a sprint plan based on target velocity.
+2. **Risk Agent**: Identifies blockers, overdue tasks, and velocity slips.
+3. **Workload Agent**: Analyzes team load and suggests rebalancing.
+4. **Synthesizer**: Merges all sub-agent outputs into a final actionable report.
+
+## RAG & Vector Memory
+
+FRIDAY utilizes **pgvector** to ground agent knowledge in your actual project data. 
+
+- **Knowledge Retrieval**: Before responding, the agent performs a similarity search across project documentation and issue history.
+- **Session History**: Conversation logs are stored in `PmAiSession`, allowing the agent to remember context across multiple interactions in the same session.
+
+## Observability with Langfuse
+
+All agent activities are traced via **Langfuse**. This includes:
+- Individual LLM generations (prompts and completions)
+- Tool call arguments and outputs
+- Graph node transitions
+- Token usage and latency per step
+
+You can view these traces in the **Traces** module (`/traces`).
 
 ---
 

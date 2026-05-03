@@ -7,6 +7,18 @@ description: Connecting FRIDAY to the outside world
 
 FRIDAY's true power lies in its asynchronous processing. We utilize a robust RabbitMQ implementation via `QueueService` to handle integrations without blocking the main Next.js thread.
 
+## Dynamic Integration Panel
+
+Connect external tools under **Settings → Integrations**. Unlike traditional hardcoded configurations, FRIDAY allows each user and project to register their own:
+
+- **OAuth Clients**: Register your own Google, Microsoft, GitHub, or GitLab applications to enable OAuth flows for your team.
+- **Git Projects**: Link specific GitLab or GitHub projects directly via the UI.
+- **Design Tools**: Connect Figma files to specific issues for live previews.
+
+These are configured via the **Integration Panel** and stored securely in the database, allowing maximum flexibility for multi-tenant or multi-org setups.
+
+---
+
 ## Git Integrations (GitHub + GitLab)
 
 Git integrations allow you to link issues to Pull Requests (PRs) or Merge Requests (MRs) automatically. 

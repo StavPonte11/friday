@@ -27,6 +27,13 @@ import { adminGroupsRouter } from './routers/admin-groups';
 import { boardAccessRouter } from './routers/board-access';
 import { adminInvitesRouter } from './routers/admin-invites';
 import { pmActivityRouter } from './routers/pm-activity';
+// Integration epic routers
+import { pmCalendarRouter } from './routers/pm-calendar';
+import { pmGitRouter } from './routers/pm-git';
+import { pmDesignRouter } from './routers/pm-design';
+// Production epic routers
+import { pmDependenciesRouter } from './routers/pm-dependencies';
+import { pmBulkRouter } from './routers/pm-bulk';
 
 // Base app router
 export const appRouter = router({
@@ -55,6 +62,11 @@ export const appRouter = router({
     pmHierarchy: pmHierarchyRouter,
     pmExecutive: pmExecutiveRouter,
     pmActivity: pmActivityRouter,
+    pmCalendar: pmCalendarRouter,
+    pmGit: pmGitRouter,
+    pmDesign: pmDesignRouter,
+    pmDependencies: pmDependenciesRouter,
+    pmBulk: pmBulkRouter,
     adminUsers: adminUsersRouter,
     adminGroups: adminGroupsRouter,
     boardAccess: boardAccessRouter,
